@@ -232,11 +232,30 @@ const deleteTransaction = async (req, res) => {
       return res.status(400).json({ message: 'Transaction has already been deleted' });
     }
 
-    // Catat ke audit log bahwa admin telah menghapus transaksi ini
+    // Ambil info admin yang melakukan penghapusan
+    const admin = await userModel.getUserById(req.user.id);
+
+    // Ambil info user pemilik wallet (pemilik transaksi)
+    const ownerWallet = await walletModel.getWalletById(transaction.wallet_id);
+
+    // Catat ke audit log dengan info lengkap
     await auditLogModel.createAuditLog(
       id,
       'Delete Transaction',
-      { adminId: req.user.id, transactionType: transaction.type, amount: transaction.amount, status: transaction.status }
+      {
+        deletedBy: {
+          adminId: req.user.id,
+          adminName: admin ? admin.name : 'Unknown',
+          adminEmail: admin ? admin.email : 'Unknown'
+        },
+        transactionOwner: {
+          userId: ownerWallet ? ownerWallet.user_id : null,
+          userName: ownerWallet ? ownerWallet.user_name : 'Unknown'
+        },
+        transactionType: transaction.type,
+        amount: transaction.amount,
+        status: transaction.status
+      }
     );
 
     await transactionModel.deleteTransaction(id);
