@@ -22,10 +22,12 @@ const topUp = async (req, res) => {
       return res.status(400).json({ message: 'Amount must be greater than 0' });
     }
 
-    await connection.beginTransaction();
-
     const wallet = await walletModel.getWalletByUserId(userId);
-    if (!wallet) throw new Error('Wallet not found');
+    if (!wallet) {
+      return res.status(404).json({ message: 'Wallet not found' });
+    }
+
+    await connection.beginTransaction();
 
     const transactionId = await transactionModel.createTransaction(wallet.id, 'topup', amount, description || 'Top Up', null, connection);
     await walletModel.updateBalance(wallet.id, amount, connection);
@@ -62,12 +64,17 @@ const transfer = async (req, res) => {
       return res.status(400).json({ message: 'Cannot transfer to yourself' });
     }
 
-    await connection.beginTransaction();
-
     const senderWallet = await walletModel.getWalletByUserId(userId);
-    const recipientWallet = await walletModel.getWalletByUserId(recipientUserId);
+    if (!senderWallet) {
+      return res.status(404).json({ message: 'Sender wallet not found' });
+    }
 
-    if (!senderWallet || !recipientWallet) throw new Error('Wallet not found');
+    const recipientWallet = await walletModel.getWalletByUserId(recipientUserId);
+    if (!recipientWallet) {
+      return res.status(404).json({ message: 'Recipient wallet not found' });
+    }
+
+    await connection.beginTransaction();
 
     const transactionId = await transactionModel.createTransaction(senderWallet.id, 'transfer', amount, description || 'Transfer', recipientWallet.id, connection);
 
@@ -108,10 +115,12 @@ const payment = async (req, res) => {
       return res.status(401).json({ message: 'Invalid PIN' });
     }
 
-    await connection.beginTransaction();
-
     const wallet = await walletModel.getWalletByUserId(userId);
-    if (!wallet) throw new Error('Wallet not found');
+    if (!wallet) {
+      return res.status(404).json({ message: 'Wallet not found' });
+    }
+
+    await connection.beginTransaction();
 
     const transactionId = await transactionModel.createTransaction(wallet.id, 'payment', amount, description || 'Payment', null, connection);
 
@@ -208,6 +217,12 @@ const updateTransactionStatus = async (req, res) => {
 const deleteTransaction = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    const transaction = await transactionModel.getTransactionById(id);
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
     await transactionModel.deleteTransaction(id);
     res.status(200).json({ message: 'Transaction deleted successfully' });
   } catch (error) {
