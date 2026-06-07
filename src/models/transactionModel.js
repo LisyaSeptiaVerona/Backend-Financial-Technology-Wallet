@@ -14,8 +14,12 @@ const updateTransactionStatus = async (transactionId, status, connection = null)
   await dbConn.query('UPDATE transactions SET status = ? WHERE id = ?', [status, transactionId]);
 };
 
-const getTransactions = async () => {
-  const [rows] = await db.query('SELECT * FROM transactions ORDER BY created_at DESC');
+const getTransactions = async (includeDeleted = false) => {
+  if (includeDeleted) {
+    const [rows] = await db.query('SELECT * FROM transactions ORDER BY created_at DESC');
+    return rows;
+  }
+  const [rows] = await db.query('SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC');
   return rows;
 };
 
@@ -25,12 +29,15 @@ const getTransactionById = async (id) => {
 };
 
 const getTransactionsByWalletId = async (walletId) => {
-  const [rows] = await db.query('SELECT * FROM transactions WHERE wallet_id = ? OR recipient_wallet_id = ? ORDER BY created_at DESC', [walletId, walletId]);
+  const [rows] = await db.query(
+    'SELECT * FROM transactions WHERE (wallet_id = ? OR recipient_wallet_id = ?) AND deleted_at IS NULL ORDER BY created_at DESC',
+    [walletId, walletId]
+  );
   return rows;
 };
 
 const deleteTransaction = async (id) => {
-  await db.query('DELETE FROM transactions WHERE id = ?', [id]);
+  await db.query('UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
 };
 
 module.exports = {

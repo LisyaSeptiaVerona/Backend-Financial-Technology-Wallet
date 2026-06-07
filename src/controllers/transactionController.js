@@ -148,8 +148,13 @@ const payment = async (req, res) => {
 
 const getTransactions = async (req, res) => {
   try {
-    if (req.user.role === 'admin' || req.user.role === 'auditor') {
-      const transactions = await transactionModel.getTransactions();
+    if (req.user.role === 'auditor') {
+      // Auditor bisa melihat SEMUA transaksi, termasuk yang sudah dihapus
+      const transactions = await transactionModel.getTransactions(true);
+      return res.status(200).json({ data: transactions });
+    } else if (req.user.role === 'admin') {
+      // Admin hanya melihat transaksi yang aktif (belum dihapus)
+      const transactions = await transactionModel.getTransactions(false);
       return res.status(200).json({ data: transactions });
     } else {
       const wallet = await walletModel.getWalletByUserId(req.user.id);
@@ -222,6 +227,17 @@ const deleteTransaction = async (req, res) => {
     if (!transaction) {
       return res.status(404).json({ message: 'Transaction not found' });
     }
+
+    if (transaction.deleted_at !== null) {
+      return res.status(400).json({ message: 'Transaction has already been deleted' });
+    }
+
+    // Catat ke audit log bahwa admin telah menghapus transaksi ini
+    await auditLogModel.createAuditLog(
+      id,
+      'Delete Transaction',
+      { adminId: req.user.id, transactionType: transaction.type, amount: transaction.amount, status: transaction.status }
+    );
 
     await transactionModel.deleteTransaction(id);
     res.status(200).json({ message: 'Transaction deleted successfully' });
