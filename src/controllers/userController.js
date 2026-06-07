@@ -170,8 +170,9 @@ const setPin = async (req, res) => {
     const userId = req.user.id;
     const { pin } = req.body;
 
-    if (!pin || pin.length < 4) {
-      return res.status(400).json({ message: 'PIN is required and must be at least 4 characters' });
+    // Enforce GoPay standard: exactly 6 digits (numeric only)
+    if (!pin || !/^\d{6}$/.test(pin)) {
+      return res.status(400).json({ message: 'PIN must be exactly 6 numeric digits' });
     }
 
     const db = require('../config/database');
