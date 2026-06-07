@@ -172,7 +172,7 @@ const setPin = async (req, res) => {
 
     // Enforce GoPay standard: exactly 6 digits (numeric only)
     if (!pin || !/^\d{6}$/.test(pin)) {
-      return res.status(400).json({ message: 'PIN must be exactly 6 numeric digits' });
+      return res.status(400).json({ message: 'PIN harus 6 digit angka' });
     }
 
     const db = require('../config/database');
