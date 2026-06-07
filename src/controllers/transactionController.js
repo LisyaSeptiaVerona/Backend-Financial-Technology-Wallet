@@ -220,17 +220,22 @@ const updateTransactionStatus = async (req, res) => {
 };
 
 const deleteTransaction = async (req, res) => {
+  const connection = await db.getConnection();
   try {
     const { id } = req.params;
-    
+
     const transaction = await transactionModel.getTransactionById(id);
     if (!transaction) {
+      connection.release();
       return res.status(404).json({ message: 'Transaction not found' });
     }
 
     if (transaction.deleted_at !== null) {
-      return res.status(400).json({ message: 'Transaction has already been deleted' });
+      connection.release();
+      return res.status(400).json({ message: 'Transaction already deleted' });
     }
+
+    await connection.beginTransaction();
 
     // Ambil info admin yang melakukan penghapusan
     const admin = await userModel.getUserById(req.user.id);
@@ -238,7 +243,7 @@ const deleteTransaction = async (req, res) => {
     // Ambil info user pemilik wallet (pemilik transaksi)
     const ownerWallet = await walletModel.getWalletById(transaction.wallet_id);
 
-    // Catat ke audit log dengan info lengkap
+    // Catat ke audit log dengan info lengkap (dalam satu transaction DB)
     await auditLogModel.createAuditLog(
       id,
       'Delete Transaction',
@@ -255,14 +260,21 @@ const deleteTransaction = async (req, res) => {
         transactionType: transaction.type,
         amount: transaction.amount,
         status: transaction.status
-      }
+      },
+      connection
     );
 
-    await transactionModel.deleteTransaction(id);
+    // Soft delete transaksi (dalam satu transaction DB yang sama)
+    await transactionModel.deleteTransaction(id, connection);
+
+    await connection.commit();
     res.status(200).json({ message: 'Transaction deleted successfully' });
   } catch (error) {
+    await connection.rollback();
     console.error('Delete transaction error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    connection.release();
   }
 };
 

@@ -14,6 +14,5 @@ router.get('/', authenticateToken, transactionController.getTransactions);
 
 // Admin only routes for managing transactions
 router.put('/:id/status', authenticateToken, authorizeRoles('admin'), transactionController.updateTransactionStatus);
-router.delete('/:id', authenticateToken, authorizeRoles('admin'), transactionController.deleteTransaction);
 
 module.exports = router;
