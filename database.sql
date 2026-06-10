@@ -27,7 +27,6 @@ CREATE TABLE IF NOT EXISTS transactions (
   description VARCHAR(255),
   recipient_wallet_id INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMP NULL DEFAULT NULL,
   FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
   FOREIGN KEY (recipient_wallet_id) REFERENCES wallets(id) ON DELETE SET NULL
 );

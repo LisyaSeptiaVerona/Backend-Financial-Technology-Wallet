@@ -21,14 +21,9 @@ const updateTransactionStatus = async (transactionId, status, connection = null)
 };
 
 // Fungsi untuk mendapatkan semua transaksi yang ada di sistem
-const getTransactions = async (includeDeleted = false) => {
-  // Jika 'includeDeleted' bernilai true (biasanya untuk Auditor), tampilkan semua transaksi termasuk yang sudah di-soft delete
-  if (includeDeleted) {
-    const [rows] = await db.query('SELECT * FROM transactions ORDER BY created_at DESC');
-    return rows;
-  }
-  // Secara default (untuk Admin), hanya tampilkan transaksi yang belum dihapus (deleted_at IS NULL)
-  const [rows] = await db.query('SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC');
+const getTransactions = async () => {
+  // Menampilkan semua transaksi tanpa kecuali (karena transaksi bersifat permanen dan tidak bisa dihapus)
+  const [rows] = await db.query('SELECT * FROM transactions ORDER BY created_at DESC');
   return rows;
 };
 
@@ -42,7 +37,7 @@ const getTransactionById = async (id) => {
 // Transaksi yang diambil mencakup saat wallet menjadi pengirim (wallet_id) atau penerima (recipient_wallet_id)
 const getTransactionsByWalletId = async (walletId) => {
   const [rows] = await db.query(
-    'SELECT * FROM transactions WHERE (wallet_id = ? OR recipient_wallet_id = ?) AND deleted_at IS NULL ORDER BY created_at DESC',
+    'SELECT * FROM transactions WHERE wallet_id = ? OR recipient_wallet_id = ? ORDER BY created_at DESC',
     [walletId, walletId]
   );
   return rows;
