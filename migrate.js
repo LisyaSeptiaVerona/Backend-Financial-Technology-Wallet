@@ -21,16 +21,6 @@ async function runMigration() {
         await pool.query(query);
       }
     }
-    
-    // Patch khusus untuk menghapus kolom deleted_at jika masih ada (terutama di Railway)
-    try {
-      await pool.query('ALTER TABLE transactions DROP COLUMN deleted_at');
-      console.log('Successfully dropped deleted_at column from transactions table');
-    } catch (e) {
-      if (e.code !== 'ER_CANT_DROP_FIELD_OR_KEY') {
-        console.warn('Warning: Could not drop deleted_at column:', e.message);
-      }
-    }
 
     console.log('Database migration completed successfully!');
     process.exit(0);
