@@ -4,15 +4,16 @@ const transactionController = require('../controllers/transactionController');
 const authenticateToken = require('../middlewares/auth');
 const authorizeRoles = require('../middlewares/role');
 
-// Transaction operations for authenticated users
+// Operasi transaksi yang bisa dilakukan oleh user yang sudah login
 router.post('/topup', authenticateToken, transactionController.topUp);
 router.post('/transfer', authenticateToken, transactionController.transfer);
 router.post('/payment', authenticateToken, transactionController.payment);
 
-// Get transactions (Admin/Auditor see all, User sees own)
+// Route untuk mendapatkan riwayat transaksi
+// Catatan: Admin/Auditor dapat melihat semua transaksi, sedangkan User biasa hanya dapat melihat transaksinya sendiri
 router.get('/', authenticateToken, transactionController.getTransactions);
 
-// Admin only routes for managing transactions
+// Route khusus untuk Admin dalam mengelola (memperbarui status) sebuah transaksi
 router.put('/:id/status', authenticateToken, authorizeRoles('admin'), transactionController.updateTransactionStatus);
 
 module.exports = router;

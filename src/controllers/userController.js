@@ -1,9 +1,11 @@
 const bcrypt = require('bcrypt');
 const userModel = require('../models/userModel');
 
+// Controller untuk mengambil data profil pengguna beserta saldo dompetnya
 const getProfile = async (req, res) => {
   try {
-    const userId = req.user.id; // From auth middleware
+    // req.user.id didapatkan dari token JWT (via auth middleware)
+    const userId = req.user.id; 
 
     const profile = await userModel.getUserProfile(userId);
     
@@ -21,6 +23,7 @@ const getProfile = async (req, res) => {
   }
 };
 
+// Endpoint simulasi Dashboard khusus role Admin
 const getAdminDashboard = async (req, res) => {
   res.status(200).json({
     message: 'Welcome Admin! This data is top secret and only visible to admin role.',
@@ -28,6 +31,7 @@ const getAdminDashboard = async (req, res) => {
   });
 };
 
+// Endpoint simulasi Dashboard khusus role User biasa
 const getUserDashboard = async (req, res) => {
   res.status(200).json({
     message: 'Welcome User! Ini halaman khusus untuk nasabah/user biasa.',
@@ -35,6 +39,7 @@ const getUserDashboard = async (req, res) => {
   });
 };
 
+// Endpoint simulasi Dashboard khusus role Auditor
 const getAuditorDashboard = async (req, res) => {
   res.status(200).json({
     message: 'Welcome Auditor! Anda memiliki akses read-only untuk mengecek laporan.',
@@ -42,28 +47,34 @@ const getAuditorDashboard = async (req, res) => {
   });
 };
 
+// Controller untuk Admin membuat user baru secara manual (bisa memilih role admin/auditor/user)
 const createUserByAdmin = async (req, res) => {
   try {
     let { name, email, password, role } = req.body;
 
+    // Pastikan admin mengirim semua field yang wajib ada
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: 'Name, email, password, and role are required' });
     }
     
     email = email.toLowerCase();
 
+    // Pastikan tidak ada duplikasi email
     const existingUser = await userModel.getUserByEmail(email);
     if (existingUser) {
       return res.status(409).json({ message: 'Email already registered' });
     }
 
+    // Validasi role agar hanya boleh diisi oleh tipe role yang tersedia
     if (!['admin', 'user', 'auditor'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role' });
     }
 
+    // Enkripsi password menggunakan bcrypt
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Proses pembuatan user di database
     const userId = await userModel.createUser(name, email, hashedPassword, role);
 
     res.status(201).json({
@@ -76,6 +87,7 @@ const createUserByAdmin = async (req, res) => {
   }
 };
 
+// Controller untuk pengguna mengganti password mereka sendiri
 const changePassword = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -90,11 +102,13 @@ const changePassword = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Validasi apakah password lama yang diinputkan benar
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Incorrect old password' });
     }
 
+    // Hash password baru sebelum disimpan ke database
     const saltRounds = 10;
     const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
@@ -107,8 +121,10 @@ const changePassword = async (req, res) => {
   }
 };
 
+// Controller bagi Admin untuk menghapus akun pengguna (user)
 const deleteUser = async (req, res) => {
   try {
+    // Ambil ID user yang ingin dihapus dari URL Parameter (/:id)
     const { id } = req.params;
 
     const user = await userModel.getUserById(id);
@@ -116,6 +132,7 @@ const deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Mencegah admin secara tidak sengaja menghapus akunnya sendiri yang sedang dipakai login
     if (user.id === req.user.id) {
       return res.status(400).json({ message: 'Admin tidak bisa menghapus akunnya sendiri' });
     }
@@ -129,6 +146,7 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// Controller untuk melihat daftar semua user di dalam sistem
 const getAllUsers = async (req, res) => {
   try {
     const users = await userModel.getAllUsers();
@@ -139,6 +157,7 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// Controller bagi Admin untuk memperbarui profil/role user tertentu
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -165,16 +184,18 @@ const updateUser = async (req, res) => {
   }
 };
 
+// Controller agar user dapat mengatur PIN transaksinya (misal untuk kebutuhan transfer/payment)
 const setPin = async (req, res) => {
   try {
     const userId = req.user.id;
     const { pin } = req.body;
 
-    // Enforce GoPay standard: exactly 6 digits (numeric only)
+    // Memaksa format standar PIN: Harus persis 6 digit angka numerik (tanpa huruf/spasi)
     if (!pin || !/^\d{6}$/.test(pin)) {
       return res.status(400).json({ message: 'PIN must be 6 numeric digits' });
     }
 
+    // Simpan PIN langsung ke tabel users (untuk sistem nyata harusnya juga dienkripsi seperti password)
     const db = require('../config/database');
     await db.query('UPDATE users SET pin = ? WHERE id = ?', [pin, userId]);
 

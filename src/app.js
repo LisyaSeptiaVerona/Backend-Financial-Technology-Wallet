@@ -8,17 +8,17 @@ const auditLogRoutes = require('./routes/auditLog');
 
 const app = express();
 
-// Middleware to parse JSON
+// Middleware bawaan express untuk membaca request body dalam format JSON
 app.use(express.json());
 
-// Routes
+// Mendaftarkan seluruh routing (jalur API) yang ada pada aplikasi
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/wallets', walletRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 
-// Basic health check route
+// Route dasar untuk mengecek apakah server / API berjalan dengan normal (Health Check)
 app.get('/', (req, res) => {
   res.send('Fintech Wallet API is running');
 });

@@ -1,33 +1,45 @@
 const db = require('../config/database');
 
+// Fungsi untuk membuat / merekam transaksi baru ke dalam database
 const createTransaction = async (walletId, type, amount, description, recipientWalletId = null, connection = null) => {
+  // Gunakan connection yang diberikan (jika ada, biasanya untuk transaksi database yang berangkai/bersama-sama) 
+  // atau gunakan koneksi db default
   const dbConn = connection || db;
+  
   const [result] = await dbConn.query(
     'INSERT INTO transactions (wallet_id, type, amount, status, description, recipient_wallet_id) VALUES (?, ?, ?, ?, ?, ?)',
+    // Status awal selalu di-set 'pending' saat pertama kali transaksi dibuat
     [walletId, type, amount, 'pending', description, recipientWalletId]
   );
   return result.insertId;
 };
 
+// Fungsi untuk memperbarui status transaksi (misal dari 'pending' menjadi 'success' atau 'failed')
 const updateTransactionStatus = async (transactionId, status, connection = null) => {
   const dbConn = connection || db;
   await dbConn.query('UPDATE transactions SET status = ? WHERE id = ?', [status, transactionId]);
 };
 
+// Fungsi untuk mendapatkan semua transaksi yang ada di sistem
 const getTransactions = async (includeDeleted = false) => {
+  // Jika 'includeDeleted' bernilai true (biasanya untuk Auditor), tampilkan semua transaksi termasuk yang sudah di-soft delete
   if (includeDeleted) {
     const [rows] = await db.query('SELECT * FROM transactions ORDER BY created_at DESC');
     return rows;
   }
+  // Secara default (untuk Admin), hanya tampilkan transaksi yang belum dihapus (deleted_at IS NULL)
   const [rows] = await db.query('SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC');
   return rows;
 };
 
+// Fungsi untuk mencari sebuah transaksi secara spesifik menggunakan ID transaksi tersebut
 const getTransactionById = async (id) => {
   const [rows] = await db.query('SELECT * FROM transactions WHERE id = ?', [id]);
   return rows[0];
 };
 
+// Fungsi untuk mendapatkan riwayat transaksi untuk dompet (wallet) tertentu.
+// Transaksi yang diambil mencakup saat wallet menjadi pengirim (wallet_id) atau penerima (recipient_wallet_id)
 const getTransactionsByWalletId = async (walletId) => {
   const [rows] = await db.query(
     'SELECT * FROM transactions WHERE (wallet_id = ? OR recipient_wallet_id = ?) AND deleted_at IS NULL ORDER BY created_at DESC',
@@ -36,8 +48,11 @@ const getTransactionsByWalletId = async (walletId) => {
   return rows;
 };
 
-const deleteTransaction = async (id) => {
-  await db.query('UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
+// Fungsi untuk menghapus transaksi secara "soft delete" (tidak terhapus dari disk, hanya ditandai dengan tanggal hapus)
+// Ini bertujuan agar Auditor masih bisa melihat riwayat meskipun data seolah-olah sudah dihapus
+const deleteTransaction = async (id, connection = null) => {
+  const dbConn = connection || db;
+  await dbConn.query('UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
 };
 
 module.exports = {
