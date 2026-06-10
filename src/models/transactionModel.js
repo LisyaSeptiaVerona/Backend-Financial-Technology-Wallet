@@ -48,18 +48,10 @@ const getTransactionsByWalletId = async (walletId) => {
   return rows;
 };
 
-// Fungsi untuk menghapus transaksi secara "soft delete" (tidak terhapus dari disk, hanya ditandai dengan tanggal hapus)
-// Ini bertujuan agar Auditor masih bisa melihat riwayat meskipun data seolah-olah sudah dihapus
-const deleteTransaction = async (id, connection = null) => {
-  const dbConn = connection || db;
-  await dbConn.query('UPDATE transactions SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [id]);
-};
-
 module.exports = {
   createTransaction,
   updateTransactionStatus,
   getTransactions,
   getTransactionById,
-  getTransactionsByWalletId,
-  deleteTransaction
+  getTransactionsByWalletId
 };

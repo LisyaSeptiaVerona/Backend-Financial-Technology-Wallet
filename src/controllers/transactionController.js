@@ -258,71 +258,10 @@ const updateTransactionStatus = async (req, res) => {
   }
 };
 
-// Controller khusus Admin untuk menghapus (soft delete) sebuah transaksi
-const deleteTransaction = async (req, res) => {
-  const connection = await db.getConnection();
-  try {
-    const { id } = req.params;
-
-    const transaction = await transactionModel.getTransactionById(id);
-    if (!transaction) {
-      connection.release();
-      return res.status(404).json({ message: 'Transaction not found' });
-    }
-
-    // Jika deleted_at sudah ada isinya, berarti transaksi sudah pernah dihapus
-    if (transaction.deleted_at !== null) {
-      connection.release();
-      return res.status(400).json({ message: 'Transaction already deleted' });
-    }
-
-    await connection.beginTransaction();
-
-    // Ambil info admin yang melakukan penghapusan untuk keperluan logging
-    const admin = await userModel.getUserById(req.user.id);
-    // Ambil info user pemilik wallet (pemilik transaksi yang akan dihapus)
-    const ownerWallet = await walletModel.getWalletById(transaction.wallet_id);
-
-    // Catat aktivitas penghapusan ini secara mendetail ke audit log
-    await auditLogModel.createAuditLog(
-      id,
-      'Delete Transaction',
-      {
-        deletedBy: {
-          adminId: req.user.id,
-          adminName: admin ? admin.name : 'Unknown',
-          adminEmail: admin ? admin.email : 'Unknown'
-        },
-        transactionOwner: {
-          userId: ownerWallet ? ownerWallet.user_id : null,
-          userName: ownerWallet ? ownerWallet.user_name : 'Unknown'
-        },
-        transactionType: transaction.type,
-        amount: transaction.amount,
-        status: transaction.status
-      },
-      connection
-    );
-
-    // Tandai transaksi sebagai terhapus (Soft delete: hanya diupdate tanggal hapusnya, tidak di-DELETE dari tabel)
-    await transactionModel.deleteTransaction(id, connection);
-
-    await connection.commit();
-    res.status(200).json({ message: 'Transaction deleted successfully' });
-  } catch (error) {
-    await connection.rollback();
-    console.error('Delete transaction error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  } finally {
-    connection.release();
-  }
-};
-
 module.exports = {
   topUp,
   transfer,
   payment,
   getTransactions,
-  updateTransactionStatus,
-  deleteTransaction
+  updateTransactionStatus
 };
