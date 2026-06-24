@@ -1,9 +1,13 @@
 const jwt = require('jsonwebtoken');
 
 const authenticateToken = (req, res, next) => {
-  // Ambil token dari header Authorization (format yang diharapkan: "Bearer <token>")
+  // Ambil token dari header Authorization (format: "Bearer <token>") atau dari query parameter "?token=<token>"
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+
+  if (!token && req.query.token) {
+    token = req.query.token;
+  }
 
   // Jika tidak ada token yang dilampirkan, tolak akses
   if (!token) {
