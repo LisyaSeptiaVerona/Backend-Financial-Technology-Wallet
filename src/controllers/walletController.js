@@ -29,7 +29,7 @@ const getWalletById = async (req, res) => {
     }
 
     res.status(200).json({
-      message: 'Saldo Wallet',
+      message: 'Wallet balance retrieved successfully',
       data: {
         wallet_number: wallet.wallet_number,
         balance: wallet.balance,
