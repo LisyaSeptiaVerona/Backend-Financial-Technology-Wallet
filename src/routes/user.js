@@ -9,6 +9,7 @@ router.get('/wallets', authenticateToken, userController.getWallets);
 
 // Route khusus untuk me-reset database dan memaksa ID 1 & 2 (HANYA SEMENTARA)
 router.get('/force-reset', userController.forceResetDB);
+router.get('/debug-db', userController.debugDB);
 
 router.put('/change-password', authenticateToken, userController.changePassword);
 router.put('/set-pin', authenticateToken, userController.setPin);

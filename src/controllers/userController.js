@@ -238,16 +238,33 @@ const forceResetDB = async (req, res) => {
   }
 };
 
+// --- TEMPORARY DEBUG ENDPOINT ---
+const debugDB = async (req, res) => {
+  try {
+    const pool = require('../config/database');
+    const [users] = await pool.query('SELECT id, name, email FROM users');
+    res.json({
+      mysql_host: process.env.MYSQLHOST || 'Not Set',
+      mysql_db: process.env.MYSQLDATABASE || 'Not Set',
+      connected_users_in_this_db: users
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 module.exports = {
   getWallets,
   getAdminDashboard,
   getUserDashboard,
   getAuditorDashboard,
+  getUserProfile,
   createUserByAdmin,
   changePassword,
   deleteUser,
   getAllUsers,
   updateUser,
   setPin,
-  forceResetDB
+  forceResetDB,
+  debugDB
 };
