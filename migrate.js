@@ -43,8 +43,10 @@ async function runMigration() {
     const [auditorRows] = await pool.query('SELECT id FROM users WHERE email = ?', [auditorEmail]);
     if (auditorRows.length === 0) {
       const hashedAuditor = await bcrypt.hash('auditor123!', 10);
-      await userModel.createUser('Sang Auditor', auditorEmail, hashedAuditor, 'auditor');
+      await userModel.createUser('Auditor', auditorEmail, hashedAuditor, 'auditor');
       console.log('Seeder: Auditor account (auditor@gopay.com) auto-created!');
+    } else {
+      await pool.query('UPDATE users SET name = ? WHERE email = ?', ['Auditor', auditorEmail]);
     }
 
     process.exit(0);
