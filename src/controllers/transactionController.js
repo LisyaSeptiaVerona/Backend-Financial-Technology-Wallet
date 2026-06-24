@@ -342,10 +342,190 @@ const updateTransactionStatus = async (req, res) => {
   }
 };
 
+// Controller khusus Admin untuk mengubah status dari sebuah transaksi Top Up secara terpisah
+const updateTopUpStatus = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'success', 'failed', 'reversed'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    await connection.beginTransaction();
+
+    const transaction = await transactionModel.getTransactionById(id);
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.type !== 'topup') {
+      await connection.rollback();
+      return res.status(400).json({ message: 'Transaction is not a topup' });
+    }
+
+    const oldStatus = transaction.status;
+    const newStatus = status;
+
+    if (oldStatus !== newStatus) {
+      const wasSuccess = oldStatus === 'success';
+      const isSuccess = newStatus === 'success';
+
+      if (wasSuccess && !isSuccess) {
+        // BATALKAN topup yang sebelumnya sukses
+        const success = await walletModel.updateBalance(transaction.wallet_id, -transaction.amount, connection);
+        if (!success) {
+          await connection.rollback();
+          return res.status(400).json({ message: 'Cannot undo topup: user has insufficient balance' });
+        }
+      } else if (!wasSuccess && isSuccess) {
+        // JALANKAN topup yang sebelumnya pending/failed menjadi sukses
+        await walletModel.updateBalance(transaction.wallet_id, transaction.amount, connection);
+      }
+    }
+
+    await transactionModel.updateTransactionStatus(id, newStatus, connection);
+    await auditLogModel.createAuditLog(id, 'Update TopUp Status', { oldStatus, newStatus, adminId: req.user.id }, connection);
+
+    await connection.commit();
+    res.status(200).json({ message: 'Top up status updated successfully' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Update topup status error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    connection.release();
+  }
+};
+
+// Controller khusus Admin untuk mengubah status dari sebuah transaksi Payment secara terpisah
+const updatePaymentStatus = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'success', 'failed', 'reversed'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    await connection.beginTransaction();
+
+    const transaction = await transactionModel.getTransactionById(id);
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.type !== 'payment') {
+      await connection.rollback();
+      return res.status(400).json({ message: 'Transaction is not a payment' });
+    }
+
+    const oldStatus = transaction.status;
+    const newStatus = status;
+
+    if (oldStatus !== newStatus) {
+      const wasSuccess = oldStatus === 'success';
+      const isSuccess = newStatus === 'success';
+
+      if (wasSuccess && !isSuccess) {
+        // BATALKAN payment yang sebelumnya sukses (kembalikan uang ke user)
+        await walletModel.updateBalance(transaction.wallet_id, transaction.amount, connection);
+      } else if (!wasSuccess && isSuccess) {
+        // JALANKAN payment yang sebelumnya pending/failed menjadi sukses
+        const success = await walletModel.updateBalance(transaction.wallet_id, -transaction.amount, connection);
+        if (!success) {
+          await connection.rollback();
+          return res.status(400).json({ message: 'Cannot approve payment: user has insufficient balance' });
+        }
+      }
+    }
+
+    await transactionModel.updateTransactionStatus(id, newStatus, connection);
+    await auditLogModel.createAuditLog(id, 'Update Payment Status', { oldStatus, newStatus, adminId: req.user.id }, connection);
+
+    await connection.commit();
+    res.status(200).json({ message: 'Payment status updated successfully' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Update payment status error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    connection.release();
+  }
+};
+
+// Controller khusus Admin untuk mengubah status dari sebuah transaksi Transfer secara terpisah
+const updateTransferStatus = async (req, res) => {
+  const connection = await db.getConnection();
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'success', 'failed', 'reversed'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    await connection.beginTransaction();
+
+    const transaction = await transactionModel.getTransactionById(id);
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.type !== 'transfer') {
+      await connection.rollback();
+      return res.status(400).json({ message: 'Transaction is not a transfer' });
+    }
+
+    const oldStatus = transaction.status;
+    const newStatus = status;
+
+    if (oldStatus !== newStatus) {
+      const wasSuccess = oldStatus === 'success';
+      const isSuccess = newStatus === 'success';
+
+      if (wasSuccess && !isSuccess) {
+        // BATALKAN transfer yang sebelumnya sukses (tarik dari penerima, kembalikan ke pengirim)
+        const deductSuccess = await walletModel.updateBalance(transaction.recipient_wallet_id, -transaction.amount, connection);
+        if (!deductSuccess) {
+          await connection.rollback();
+          return res.status(400).json({ message: 'Cannot undo transfer: recipient has insufficient balance' });
+        }
+        await walletModel.updateBalance(transaction.wallet_id, transaction.amount, connection);
+      } else if (!wasSuccess && isSuccess) {
+        // JALANKAN transfer yang sebelumnya pending/failed menjadi sukses
+        const deductSuccess = await walletModel.updateBalance(transaction.wallet_id, -transaction.amount, connection);
+        if (!deductSuccess) {
+          await connection.rollback();
+          return res.status(400).json({ message: 'Cannot approve transfer: sender has insufficient balance' });
+        }
+        await walletModel.updateBalance(transaction.recipient_wallet_id, transaction.amount, connection);
+      }
+    }
+
+    await transactionModel.updateTransactionStatus(id, newStatus, connection);
+    await auditLogModel.createAuditLog(id, 'Update Transfer Status', { oldStatus, newStatus, adminId: req.user.id }, connection);
+
+    await connection.commit();
+    res.status(200).json({ message: 'Transfer status updated successfully' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Update transfer status error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   topUp,
   transfer,
   payment,
   getTransactions,
-  updateTransactionStatus
+  updateTransactionStatus,
+  updateTopUpStatus,
+  updatePaymentStatus,
+  updateTransferStatus
 };

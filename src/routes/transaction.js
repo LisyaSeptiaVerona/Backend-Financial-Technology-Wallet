@@ -13,6 +13,11 @@ router.post('/payment', authenticateToken, transactionController.payment);
 // Catatan: Admin/Auditor dapat melihat semua transaksi, sedangkan User biasa hanya dapat melihat transaksinya sendiri
 router.get('/', authenticateToken, transactionController.getTransactions);
 
+// Route khusus untuk Admin dalam mengelola (memperbarui status) transaksi secara terpisah
+router.put('/topup/:id/status', authenticateToken, authorizeRoles('admin'), transactionController.updateTopUpStatus);
+router.put('/payment/:id/status', authenticateToken, authorizeRoles('admin'), transactionController.updatePaymentStatus);
+router.put('/transfer/:id/status', authenticateToken, authorizeRoles('admin'), transactionController.updateTransferStatus);
+
 // Route khusus untuk Admin dalam mengelola (memperbarui status) sebuah transaksi
 router.put('/:id/status', authenticateToken, authorizeRoles('admin'), transactionController.updateTransactionStatus);
 
