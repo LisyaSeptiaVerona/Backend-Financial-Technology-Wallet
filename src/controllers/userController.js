@@ -1,5 +1,7 @@
 const bcrypt = require('bcrypt');
 const userModel = require('../models/userModel');
+const walletModel = require('../models/walletModel');
+const transactionModel = require('../models/transactionModel');
 
 // Controller untuk mengambil data wallet pengguna
 const getWallets = async (req, res) => {
@@ -31,13 +33,135 @@ const getAdminDashboard = async (req, res) => {
   });
 };
 
-// Endpoint simulasi Dashboard khusus role User biasa
+// Endpoint simulasi Dashboard khusus role User biasa (Dashboard Transaksi dan Saldo)
 const getUserDashboard = async (req, res) => {
-  res.status(200).json({
-    message: 'Welcome User! Ini halaman khusus untuk nasabah/user biasa.',
-    data: { info: 'Anda tidak bisa mengakses menu Admin.' }
-  });
+  try {
+    const userId = req.user.id;
+
+    // 1. Ambil data wallet user
+    const wallet = await walletModel.getWalletByUserId(userId);
+    if (!wallet) {
+      return res.status(404).json({ message: 'Wallet not found' });
+    }
+
+    // 2. Ambil semua riwayat transaksi untuk wallet ini
+    const transactions = await transactionModel.getTransactionsByWalletId(wallet.id);
+
+    // 3. Hitung ringkasan transaksi
+    const totalTransactions = transactions.length;
+
+    const totalTopUp = transactions.filter(tx => tx.type === 'topup').length;
+    const totalTransfer = transactions.filter(tx => tx.type === 'transfer').length;
+    const totalPayment = transactions.filter(tx => tx.type === 'payment').length;
+
+    const totalSuccess = transactions.filter(tx => tx.status === 'success').length;
+    const totalFailed = transactions.filter(tx => tx.status === 'failed').length;
+    const totalPending = transactions.filter(tx => tx.status === 'pending').length;
+
+    // 4. Buat data grafik perkembangan saldo (7 hari terakhir)
+    const dates = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      dates.push(dateStr);
+    }
+
+    const currentBalance = Number(wallet.balance);
+    const events = [{ time: new Date(), balance: currentBalance }];
+    let tempBal = currentBalance;
+
+    for (const tx of transactions) {
+      if (tx.status !== 'success') continue;
+      const txTime = new Date(tx.created_at);
+      if (tx.wallet_id === wallet.id) {
+        // User adalah pengirim/pembayar (saldo berkurang, sebelum transaksi saldo lebih besar)
+        events.push({ time: txTime, balance: Number(tx.balance_after || 0) });
+        tempBal = Number(tx.balance_before || 0);
+      } else if (tx.recipient_wallet_id === wallet.id) {
+        // User adalah penerima transfer (saldo bertambah, sebelum transaksi saldo lebih kecil)
+        events.push({ time: txTime, balance: tempBal });
+        tempBal = tempBal - Number(tx.amount || 0);
+      }
+    }
+    events.push({ time: new Date(0), balance: tempBal });
+
+    const balanceHistory = dates.map(dateStr => {
+      const dayEnd = new Date(dateStr + 'T23:59:59.999Z');
+      const sortedEvents = [...events].sort((a, b) => a.time - b.time);
+      let dayBalance = tempBal;
+      for (const event of sortedEvents) {
+        if (event.time <= dayEnd) {
+          dayBalance = event.balance;
+        } else {
+          break;
+        }
+      }
+      return { date: dateStr, balance: dayBalance };
+    });
+
+    // 5. Buat data grafik jumlah transaksi berdasarkan jenis transaksi (7 hari terakhir)
+    const transactionHistoryChart = dates.map(dateStr => {
+      const startOfDay = new Date(dateStr + 'T00:00:00.000Z');
+      const endOfDay = new Date(dateStr + 'T23:59:59.999Z');
+
+      const dailyTxs = transactions.filter(tx => {
+        const txTime = new Date(tx.created_at);
+        return txTime >= startOfDay && txTime <= endOfDay;
+      });
+
+      const topupCount = dailyTxs.filter(tx => tx.type === 'topup').length;
+      const transferCount = dailyTxs.filter(tx => tx.type === 'transfer').length;
+      const paymentCount = dailyTxs.filter(tx => tx.type === 'payment').length;
+
+      return {
+        date: dateStr,
+        'Top Up': topupCount,
+        'Transfer': transferCount,
+        'Payment': paymentCount,
+        total: dailyTxs.length
+      };
+    });
+
+    // 6. 5 transaksi terbaru
+    const recentTransactions = transactions.slice(0, 5).map(tx => ({
+      transaction_id: tx.id,
+      transaction_type: tx.type === 'topup' ? 'Top Up' : tx.type === 'transfer' ? 'Transfer' : tx.type === 'payment' ? 'Payment' : tx.type,
+      amount: Number(tx.amount),
+      status: tx.status,
+      description: tx.description,
+      date_and_time: tx.created_at,
+      balance_before: Number(tx.balance_before || 0),
+      balance_after: Number(tx.balance_after || 0)
+    }));
+
+    res.status(200).json({
+      message: 'Dashboard data retrieved successfully',
+      data: {
+        card_balance: currentBalance,
+        wallet_number: wallet.wallet_number,
+        total_transactions: totalTransactions,
+        transactions_by_category: {
+          'Top Up': totalTopUp,
+          'Transfer': totalTransfer,
+          'Payment': totalPayment
+        },
+        transactions_by_status: {
+          'Success': totalSuccess,
+          'Failed': totalFailed,
+          'Pending': totalPending
+        },
+        balance_history: balanceHistory,
+        transaction_history_chart: transactionHistoryChart,
+        recent_transactions: recentTransactions
+      }
+    });
+  } catch (error) {
+    console.error('Get user dashboard error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
+
 
 // Endpoint simulasi Dashboard khusus role Auditor
 const getAuditorDashboard = async (req, res) => {
