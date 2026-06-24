@@ -49,7 +49,13 @@ async function runMigration() {
       await pool.query('UPDATE users SET name = ? WHERE email = ?', ['Auditor', auditorEmail]);
     }
 
-
+    // Hapus wallet milik Admin & Auditor jika ada (mereka bukan nasabah, tidak perlu wallet)
+    await pool.query(`
+      DELETE w FROM wallets w
+      JOIN users u ON w.user_id = u.id
+      WHERE u.role IN ('admin', 'auditor')
+    `);
+    console.log('Cleanup: Wallet milik Admin & Auditor berhasil dihapus (jika ada).');
 
     process.exit(0);
   } catch (error) {
