@@ -23,6 +23,30 @@ async function runMigration() {
     }
 
     console.log('Database migration completed successfully!');
+
+    // --- SEEDER: Auto Create Admin & Auditor ---
+    const bcrypt = require('bcrypt');
+    const userModel = require('./src/models/userModel');
+    
+    const adminEmail = 'admin@gopay.com';
+    const auditorEmail = 'auditor@gopay.com';
+
+    // Cek apakah Admin sudah ada
+    const [adminRows] = await pool.query('SELECT id FROM users WHERE email = ?', [adminEmail]);
+    if (adminRows.length === 0) {
+      const hashedAdmin = await bcrypt.hash('admin123!', 10);
+      await userModel.createUser('Super Admin', adminEmail, hashedAdmin, 'admin');
+      console.log('Seeder: Admin account (admin@gopay.com) auto-created!');
+    }
+
+    // Cek apakah Auditor sudah ada
+    const [auditorRows] = await pool.query('SELECT id FROM users WHERE email = ?', [auditorEmail]);
+    if (auditorRows.length === 0) {
+      const hashedAuditor = await bcrypt.hash('auditor123!', 10);
+      await userModel.createUser('Sang Auditor', auditorEmail, hashedAuditor, 'auditor');
+      console.log('Seeder: Auditor account (auditor@gopay.com) auto-created!');
+    }
+
     process.exit(0);
   } catch (error) {
     console.error('Migration failed:', error);
