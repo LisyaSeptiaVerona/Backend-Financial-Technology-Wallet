@@ -77,6 +77,7 @@ const topUp = async (req, res) => {
         amount: Number(amount),
         balance_before: balanceBefore,
         balance_after: balanceAfter,
+        description: transDesc,
         status: 'success'
       }
     });
@@ -172,6 +173,7 @@ const transfer = async (req, res) => {
         amount: Number(amount),
         balance_before: balanceBefore,
         balance_after: balanceAfter,
+        description: description || 'Transfer',
         status: 'success'
       }
     });
@@ -246,6 +248,7 @@ const payment = async (req, res) => {
         amount: Number(amount),
         balance_before: balanceBefore,
         balance_after: balanceAfter,
+        description: paymentName,
         status: 'success'
       }
     });
