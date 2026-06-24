@@ -762,28 +762,48 @@ const getProfile = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'User not found' });
     }
 
-    // Daftar permissions berdasarkan role
+    // Daftar permissions berdasarkan role (sesuai seluruh fitur yang tersedia di sistem)
     const permissionsMap = {
+      // USER: Fitur transaksi pribadi & manajemen akun sendiri
       user: [
+        'view_own_profile',
+        'view_own_wallet',
+        'view_own_transaction_history',
         'view_dashboard',
-        'view_balance',
-        'view_transaction',
         'create_topup',
         'create_transfer',
-        'make_payment'
+        'make_payment',
+        'change_password',
+        'set_pin'
       ],
+      // ADMIN: Pengelolaan seluruh sistem, user, wallet, dan transaksi
       admin: [
-        'manage_user',
-        'manage_wallet',
-        'view_all_transaction',
-        'manage_transaction',
-        'manage_system'
+        'view_own_profile',
+        'view_admin_dashboard',
+        'create_user',
+        'update_user',
+        'delete_user',
+        'view_all_users',
+        'view_all_wallets',
+        'view_all_wallet_balances',
+        'view_wallet_by_user_id',
+        'view_all_transactions',
+        'update_topup_status',
+        'update_transfer_status',
+        'update_payment_status',
+        'update_transaction_status',
+        'view_audit_log'
       ],
+      // AUDITOR: Pemantauan dan audit log (read-only)
       auditor: [
-        'view_audit_log',
-        'view_transaction_history',
-        'monitor_activity',
-        'generate_report'
+        'view_own_profile',
+        'view_auditor_dashboard',
+        'view_all_users',
+        'view_all_wallets',
+        'view_all_wallet_balances',
+        'view_wallet_by_user_id',
+        'view_all_transactions',
+        'view_audit_log'
       ]
     };
 
