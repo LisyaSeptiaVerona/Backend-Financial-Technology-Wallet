@@ -54,7 +54,7 @@ const topUp = async (req, res) => {
 
     // 1. Buat catatan transaksi baru dengan tipe 'topup'
     const transDesc = description || (payment_method ? `Top Up via ${payment_method}` : 'Top Up');
-    const transactionId = await transactionModel.createTransaction(wallet.id, 'topup', amount, transDesc, null, connection);
+    const transactionId = await transactionModel.createTransaction(wallet.id, 'topup', amount, transDesc, balanceBefore, balanceAfter, null, connection);
     
     // 2. Tambahkan saldo ke wallet user
     await walletModel.updateBalance(wallet.id, amount, connection);
@@ -136,12 +136,17 @@ const transfer = async (req, res) => {
 
     await connection.beginTransaction();
 
+    const balanceBefore = Number(senderWallet.balance);
+    const balanceAfter = balanceBefore - Number(amount);
+
     // 1. Catat transaksi dengan tipe 'transfer' yang melibatkan dompet pengirim dan penerima
     const transactionId = await transactionModel.createTransaction(
       senderWallet.id, 
       'transfer', 
       amount, 
       description || 'Transfer', 
+      balanceBefore,
+      balanceAfter,
       recipientWallet.id, 
       connection
     );
@@ -223,7 +228,7 @@ const payment = async (req, res) => {
     await connection.beginTransaction();
 
     // 1. Buat catatan transaksi dengan tipe 'payment'
-    const transactionId = await transactionModel.createTransaction(wallet.id, 'payment', amount, paymentName, null, connection);
+    const transactionId = await transactionModel.createTransaction(wallet.id, 'payment', amount, paymentName, balanceBefore, balanceAfter, null, connection);
 
     // 2. Kurangi saldo user (mengembalikan false jika saldo tidak mencukupi)
     const success = await walletModel.updateBalance(wallet.id, -amount, connection);
@@ -263,21 +268,34 @@ const payment = async (req, res) => {
 // Controller untuk mendapatkan daftar transaksi
 const getTransactions = async (req, res) => {
   try {
+    let rawTransactions = [];
+
     if (req.user.role === 'auditor') {
-      // Auditor memiliki izin tertinggi untuk melihat SEMUA transaksi, termasuk yang sudah dihapus secara sistem
-      const transactions = await transactionModel.getTransactions(true);
-      return res.status(200).json({ data: transactions });
+      // Auditor memiliki izin tertinggi untuk melihat SEMUA transaksi
+      rawTransactions = await transactionModel.getTransactions(true);
     } else if (req.user.role === 'admin') {
       // Admin hanya melihat semua transaksi yang berstatus aktif (belum terhapus)
-      const transactions = await transactionModel.getTransactions(false);
-      return res.status(200).json({ data: transactions });
+      rawTransactions = await transactionModel.getTransactions(false);
     } else {
       // User biasa hanya boleh melihat riwayat transaksi miliknya sendiri
       const wallet = await walletModel.getWalletByUserId(req.user.id);
       if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
-      const transactions = await transactionModel.getTransactionsByWalletId(wallet.id);
-      return res.status(200).json({ data: transactions });
+      rawTransactions = await transactionModel.getTransactionsByWalletId(wallet.id);
     }
+
+    // Format data sesuai kebutuhan (mutasi transaksi)
+    const formattedTransactions = rawTransactions.map(tx => ({
+      tanggal_dan_waktu: tx.created_at,
+      id_transaksi: tx.id,
+      jenis_transaksi: tx.type,
+      nominal_transaksi: Number(tx.amount),
+      status_transaksi: tx.status,
+      keterangan: tx.description,
+      saldo_sebelum: Number(tx.balance_before || 0),
+      saldo_setelah: Number(tx.balance_after || 0)
+    }));
+
+    return res.status(200).json({ data: formattedTransactions });
   } catch (error) {
     console.error('Get transactions error:', error);
     res.status(500).json({ message: 'Internal server error' });

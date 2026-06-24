@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount DECIMAL(15, 2) NOT NULL,
   status ENUM('pending', 'success', 'failed', 'reversed') DEFAULT 'pending',
   description VARCHAR(255),
+  balance_before DECIMAL(15, 2) DEFAULT 0.00,
+  balance_after DECIMAL(15, 2) DEFAULT 0.00,
   recipient_wallet_id INT DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
