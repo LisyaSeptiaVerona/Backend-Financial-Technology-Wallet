@@ -4,7 +4,17 @@ const walletModel = require('../models/walletModel');
 const getAllWallets = async (req, res) => {
   try {
     const wallets = await walletModel.getAllWallets();
-    res.status(200).json({ data: wallets });
+    res.status(200).json({
+      message: 'All wallet balances retrieved successfully',
+      data: wallets.map(w => ({
+        id: w.id,
+        user_id: w.user_id,
+        user_name: w.user_name,
+        wallet_number: w.wallet_number,
+        balance: w.balance,
+        status: w.status
+      }))
+    });
   } catch (error) {
     console.error('Get all wallets error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -28,13 +38,22 @@ const getWalletById = async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: You can only view your own wallet' });
     }
 
+    const responseData = {
+      wallet_number: wallet.wallet_number,
+      balance: wallet.balance,
+      status: wallet.status
+    };
+
+    // Jika yang mengakses adalah admin atau auditor, berikan informasi kepemilikan wallet
+    if (req.user.role === 'admin' || req.user.role === 'auditor') {
+      responseData.id = wallet.id;
+      responseData.user_id = wallet.user_id;
+      responseData.user_name = wallet.user_name;
+    }
+
     res.status(200).json({
       message: 'Wallet balance retrieved successfully',
-      data: {
-        wallet_number: wallet.wallet_number,
-        balance: wallet.balance,
-        status: wallet.status
-      }
+      data: responseData
     });
   } catch (error) {
     console.error('Get wallet by ID error:', error);

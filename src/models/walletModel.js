@@ -2,7 +2,18 @@ const db = require('../config/database');
 
 // Fungsi untuk mengambil data semua wallet milik pengguna biasa (bukan admin/auditor)
 const getAllWallets = async () => {
-  const [rows] = await db.query("SELECT w.id, w.user_id, w.balance, u.name as user_name FROM wallets w JOIN users u ON w.user_id = u.id WHERE u.role = 'user'");
+  const [rows] = await db.query(`
+    SELECT 
+      w.id, 
+      w.user_id, 
+      u.name as user_name, 
+      w.wallet_number, 
+      w.balance, 
+      w.status 
+    FROM wallets w 
+    JOIN users u ON w.user_id = u.id 
+    WHERE u.role = 'user'
+  `);
   return rows;
 };
 
