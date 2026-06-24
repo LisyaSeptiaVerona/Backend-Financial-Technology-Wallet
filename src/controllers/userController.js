@@ -14,7 +14,7 @@ const getWallets = async (req, res) => {
     }
 
     res.status(200).json({
-      message: 'Wallet retrieved successfully',
+      message: 'Wallet account data retrieved successfully',
       data: wallet
     });
   } catch (error) {
