@@ -247,7 +247,6 @@ const payment = async (req, res) => {
         amount: Number(amount),
         balance_before: balanceBefore,
         balance_after: balanceAfter,
-        description: paymentName,
         status: 'success'
       }
     });
