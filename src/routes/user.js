@@ -7,6 +7,9 @@ const authorizeRoles = require('../middlewares/role');
 // Route terlindungi, memerlukan token JWT yang valid untuk diakses
 router.get('/wallets', authenticateToken, userController.getWallets);
 
+// Route untuk mendapatkan profil lengkap user beserta permissions sesuai role
+router.get('/profile', authenticateToken, userController.getProfile);
+
 router.put('/change-password', authenticateToken, userController.changePassword);
 router.put('/set-pin', authenticateToken, userController.setPin);
 

@@ -753,6 +753,67 @@ const getAllWalletsBalance = async (req, res) => {
   }
 };
 
+// Controller untuk mendapatkan profil user beserta daftar permissions sesuai role-nya
+const getProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await userModel.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+
+    // Daftar permissions berdasarkan role
+    const permissionsMap = {
+      user: [
+        'view_dashboard',
+        'view_balance',
+        'view_transaction',
+        'create_topup',
+        'create_transfer',
+        'make_payment'
+      ],
+      admin: [
+        'manage_user',
+        'manage_wallet',
+        'view_all_transaction',
+        'manage_transaction',
+        'manage_system'
+      ],
+      auditor: [
+        'view_audit_log',
+        'view_transaction_history',
+        'monitor_activity',
+        'generate_report'
+      ]
+    };
+
+    const roleMessages = {
+      user: 'User authorization successful',
+      admin: 'Admin authorization successful',
+      auditor: 'Auditor authorization successful'
+    };
+
+    const role = user.role;
+    const permissions = permissionsMap[role] || [];
+    const message = roleMessages[role] || 'Authorization successful';
+
+    return res.status(200).json({
+      status: 'success',
+      message,
+      data: {
+        user_id: user.id,
+        name: user.name,
+        email: user.email,
+        role,
+        permissions
+      }
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({ status: 'error', message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getWallets,
   getAdminDashboard,
@@ -766,5 +827,6 @@ module.exports = {
   setPin,
   getAllWallets,
   getWalletByUserId,
-  getAllWalletsBalance
+  getAllWalletsBalance,
+  getProfile
 };
