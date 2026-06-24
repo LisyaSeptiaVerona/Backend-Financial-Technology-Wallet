@@ -285,14 +285,14 @@ const getTransactions = async (req, res) => {
 
     // Format data sesuai kebutuhan (mutasi transaksi)
     const formattedTransactions = rawTransactions.map(tx => ({
-      tanggal_dan_waktu: tx.created_at,
-      id_transaksi: tx.id,
-      jenis_transaksi: tx.type,
-      nominal_transaksi: Number(tx.amount),
-      status_transaksi: tx.status,
-      keterangan: tx.description,
-      saldo_sebelum: Number(tx.balance_before || 0),
-      saldo_setelah: Number(tx.balance_after || 0)
+      date_and_time: tx.created_at,
+      transaction_id: tx.id,
+      transaction_type: tx.type,
+      amount: Number(tx.amount),
+      status: tx.status,
+      description: tx.description,
+      balance_before: Number(tx.balance_before || 0),
+      balance_after: Number(tx.balance_after || 0)
     }));
 
     return res.status(200).json({ data: formattedTransactions });
