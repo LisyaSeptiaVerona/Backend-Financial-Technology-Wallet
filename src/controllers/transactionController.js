@@ -249,33 +249,63 @@ const updateTransactionStatus = async (req, res) => {
       return res.status(404).json({ message: 'Transaction not found' });
     }
 
-    // Logika Pengembalian Saldo (Refund) jika transaksi dibatalkan / di-reverse
-    if (status === 'reversed' && transaction.status === 'success') {
-      if (transaction.type === 'topup') {
-        // Jika top up dibatalkan, kurangi kembali saldo user
-        const success = await walletModel.updateBalance(transaction.wallet_id, -transaction.amount, connection);
-        if (!success) {
-          await connection.rollback();
-          return res.status(400).json({ message: 'Cannot reverse topup: user has insufficient balance' });
+    const oldStatus = transaction.status;
+    const newStatus = status;
+
+    // Logika penyesuaian saldo berdasarkan perubahan status
+    if (oldStatus !== newStatus) {
+      const wasSuccess = oldStatus === 'success';
+      const isSuccess = newStatus === 'success';
+
+      if (wasSuccess && !isSuccess) {
+        // BATALKAN transaksi yang sebelumnya sukses (refund/reverse/fail)
+        if (transaction.type === 'topup') {
+          // Kurangi kembali saldo user
+          const success = await walletModel.updateBalance(transaction.wallet_id, -transaction.amount, connection);
+          if (!success) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Cannot undo topup: user has insufficient balance' });
+          }
+        } else if (transaction.type === 'payment') {
+          // Kembalikan saldo ke user
+          await walletModel.updateBalance(transaction.wallet_id, transaction.amount, connection);
+        } else if (transaction.type === 'transfer') {
+          // Ambil uang dari penerima, kembalikan ke pengirim
+          const deductSuccess = await walletModel.updateBalance(transaction.recipient_wallet_id, -transaction.amount, connection);
+          if (!deductSuccess) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Cannot undo transfer: recipient has insufficient balance' });
+          }
+          await walletModel.updateBalance(transaction.wallet_id, transaction.amount, connection);
         }
-      } else if (transaction.type === 'payment') {
-        // Jika payment dibatalkan, kembalikan uangnya
-        await walletModel.updateBalance(transaction.wallet_id, transaction.amount, connection);
-      } else if (transaction.type === 'transfer') {
-        // Jika transfer dibatalkan, ambil uang dari penerima dan kembalikan ke pengirim
-        const deductSuccess = await walletModel.updateBalance(transaction.recipient_wallet_id, -transaction.amount, connection);
-        if (!deductSuccess) {
-          await connection.rollback();
-          return res.status(400).json({ message: 'Cannot reverse transfer: recipient has insufficient balance' });
+      } else if (!wasSuccess && isSuccess) {
+        // JALANKAN transaksi yang sebelumnya belum sukses/gagal/pending menjadi sukses
+        if (transaction.type === 'topup') {
+          // Tambah saldo user
+          await walletModel.updateBalance(transaction.wallet_id, transaction.amount, connection);
+        } else if (transaction.type === 'payment') {
+          // Kurangi saldo user
+          const success = await walletModel.updateBalance(transaction.wallet_id, -transaction.amount, connection);
+          if (!success) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Cannot approve payment: user has insufficient balance' });
+          }
+        } else if (transaction.type === 'transfer') {
+          // Kurangi saldo pengirim, tambah saldo penerima
+          const deductSuccess = await walletModel.updateBalance(transaction.wallet_id, -transaction.amount, connection);
+          if (!deductSuccess) {
+            await connection.rollback();
+            return res.status(400).json({ message: 'Cannot approve transfer: sender has insufficient balance' });
+          }
+          await walletModel.updateBalance(transaction.recipient_wallet_id, transaction.amount, connection);
         }
-        await walletModel.updateBalance(transaction.wallet_id, transaction.amount, connection);
       }
     }
 
     // Simpan status baru
-    await transactionModel.updateTransactionStatus(id, status, connection);
+    await transactionModel.updateTransactionStatus(id, newStatus, connection);
     // Catat perubahan status ini ke audit log agar terekam siapa Admin yang merubahnya
-    await auditLogModel.createAuditLog(id, 'Update Status', { oldStatus: transaction.status, newStatus: status, adminId: req.user.id }, connection);
+    await auditLogModel.createAuditLog(id, 'Update Status', { oldStatus, newStatus, adminId: req.user.id }, connection);
 
     await connection.commit();
     res.status(200).json({ message: 'Status updated successfully' });
