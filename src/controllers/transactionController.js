@@ -73,6 +73,7 @@ const topUp = async (req, res) => {
       data: {
         transaction_id: transactionId,
         wallet_number: wallet.wallet_number,
+        payment_method: payment_method || 'bank_transfer',
         amount: Number(amount),
         balance_before: balanceBefore,
         balance_after: balanceAfter,
@@ -160,7 +161,7 @@ const payment = async (req, res) => {
   const connection = await db.getConnection();
   try {
     const userId = req.user.id;
-    const { amount, pin, description, wallet_number } = req.body;
+    const { amount, pin, description, wallet_number, payment_name } = req.body;
 
     if (!amount || amount <= 0 || !pin) {
       return res.status(400).json({ message: 'Amount (>0) and pin are required' });
@@ -183,25 +184,28 @@ const payment = async (req, res) => {
 
     const balanceBefore = Number(wallet.balance);
     const balanceAfter = balanceBefore - Number(amount);
+    
+    // Identifikasi nama pembayaran (misal Netflix, Spotify)
+    const paymentName = payment_name || description || 'Payment';
 
     await connection.beginTransaction();
 
     // 1. Buat catatan transaksi dengan tipe 'payment'
-    const transactionId = await transactionModel.createTransaction(wallet.id, 'payment', amount, description || 'Payment', null, connection);
+    const transactionId = await transactionModel.createTransaction(wallet.id, 'payment', amount, paymentName, null, connection);
 
     // 2. Kurangi saldo user (mengembalikan false jika saldo tidak mencukupi)
     const success = await walletModel.updateBalance(wallet.id, -amount, connection);
     if (!success) {
       // Saldo kurang, gagalkan transaksi
       await transactionModel.updateTransactionStatus(transactionId, 'failed', connection);
-      await auditLogModel.createAuditLog(transactionId, 'Payment', { userId, amount, status: 'failed - insufficient balance' }, connection);
+      await auditLogModel.createAuditLog(transactionId, 'Payment', { userId, amount, status: 'failed - insufficient balance', payment_name: paymentName }, connection);
       await connection.commit();
       return res.status(400).json({ message: 'Insufficient balance' });
     }
 
     // Pembayaran berhasil
     await transactionModel.updateTransactionStatus(transactionId, 'success', connection);
-    await auditLogModel.createAuditLog(transactionId, 'Payment', { userId, amount, status: 'success' }, connection);
+    await auditLogModel.createAuditLog(transactionId, 'Payment', { userId, amount, status: 'success', payment_name: paymentName }, connection);
 
     await connection.commit();
     
@@ -210,6 +214,7 @@ const payment = async (req, res) => {
       data: {
         transaction_id: transactionId,
         wallet_number: wallet.wallet_number,
+        payment_name: paymentName,
         amount: Number(amount),
         balance_before: balanceBefore,
         balance_after: balanceAfter,
