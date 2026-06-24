@@ -20,11 +20,19 @@ const topUp = async (req, res) => {
   const connection = await db.getConnection();
   try {
     const userId = req.user.id;
-    const { amount, description } = req.body;
+    const { amount, pin, description, wallet_number, payment_method } = req.body;
 
-    // Validasi dasar: jumlah top up harus lebih dari 0
+    // Validasi dasar: jumlah top up harus lebih dari 0 dan PIN wajib ada
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Amount must be greater than 0' });
+    }
+    if (!pin) {
+      return res.status(400).json({ message: 'PIN is required' });
+    }
+
+    // Verifikasi PIN sebelum memproses top up
+    if (!(await verifyPin(userId, pin))) {
+      return res.status(401).json({ message: 'Invalid PIN' });
     }
 
     // Cari wallet milik user yang sedang request
@@ -33,22 +41,44 @@ const topUp = async (req, res) => {
       return res.status(404).json({ message: 'Wallet not found' });
     }
 
+    // Jika user mengirim wallet_number di request body, validasi agar cocok
+    if (wallet_number && wallet.wallet_number !== wallet_number) {
+      return res.status(400).json({ message: 'Wallet number does not match your wallet' });
+    }
+
+    const balanceBefore = Number(wallet.balance);
+    const balanceAfter = balanceBefore + Number(amount);
+
     // Mulai transaksi database
     await connection.beginTransaction();
 
     // 1. Buat catatan transaksi baru dengan tipe 'topup'
-    const transactionId = await transactionModel.createTransaction(wallet.id, 'topup', amount, description || 'Top Up', null, connection);
+    const transDesc = description || (payment_method ? `Top Up via ${payment_method}` : 'Top Up');
+    const transactionId = await transactionModel.createTransaction(wallet.id, 'topup', amount, transDesc, null, connection);
+    
     // 2. Tambahkan saldo ke wallet user
     await walletModel.updateBalance(wallet.id, amount, connection);
+    
     // 3. Ubah status transaksi menjadi 'success'
     await transactionModel.updateTransactionStatus(transactionId, 'success', connection);
     
     // 4. Catat aktivitas ini ke dalam audit log
-    await auditLogModel.createAuditLog(transactionId, 'Top Up', { userId, amount, status: 'success' }, connection);
+    await auditLogModel.createAuditLog(transactionId, 'Top Up', { userId, amount, status: 'success', payment_method }, connection);
 
     // Simpan semua perubahan ke database secara permanen
     await connection.commit();
-    res.status(200).json({ message: 'Top up successful', transactionId });
+    
+    res.status(200).json({ 
+      message: 'Top up successful',
+      data: {
+        transaction_id: transactionId,
+        wallet_number: wallet.wallet_number,
+        amount: Number(amount),
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        status: 'success'
+      }
+    });
   } catch (error) {
     // Jika terjadi error di salah satu langkah, batalkan semua perubahan yang belum di-commit
     await connection.rollback();
