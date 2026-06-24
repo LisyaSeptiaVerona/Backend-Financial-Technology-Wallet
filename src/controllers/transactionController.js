@@ -75,8 +75,6 @@ const topUp = async (req, res) => {
         wallet_number: wallet.wallet_number,
         payment_method: payment_method || 'bank_transfer',
         amount: Number(amount),
-        balance_before: balanceBefore,
-        balance_after: balanceAfter,
         status: 'success'
       }
     });
@@ -170,8 +168,6 @@ const transfer = async (req, res) => {
         sender_wallet_number: senderWallet.wallet_number,
         recipient_wallet_number: recipientWallet.wallet_number,
         amount: Number(amount),
-        balance_before: balanceBefore,
-        balance_after: balanceAfter,
         description: description || 'Transfer',
         status: 'success'
       }
@@ -245,8 +241,6 @@ const payment = async (req, res) => {
         wallet_number: wallet.wallet_number,
         payment_name: paymentName,
         amount: Number(amount),
-        balance_before: balanceBefore,
-        balance_after: balanceAfter,
         status: 'success'
       }
     });
