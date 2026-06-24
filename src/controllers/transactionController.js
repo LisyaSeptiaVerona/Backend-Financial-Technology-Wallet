@@ -63,7 +63,7 @@ const topUp = async (req, res) => {
     await transactionModel.updateTransactionStatus(transactionId, 'success', connection);
     
     // 4. Catat aktivitas ini ke dalam audit log
-    await auditLogModel.createAuditLog(transactionId, 'Top Up', { userId, amount, status: 'success', payment_method }, connection);
+    await auditLogModel.createAuditLog(transactionId, 'Top Up Balance', { userId, amount, status: 'success', payment_method }, connection);
 
     // Simpan semua perubahan ke database secara permanen
     await connection.commit();
@@ -156,7 +156,7 @@ const transfer = async (req, res) => {
     if (!success) {
       // Jika saldo tidak cukup, ubah status transaksi menjadi 'failed' dan log kegagalan
       await transactionModel.updateTransactionStatus(transactionId, 'failed', connection);
-      await auditLogModel.createAuditLog(transactionId, 'Transfer', { sender: userId, recipient: recipientWallet.user_id, amount, status: 'failed - insufficient balance' }, connection);
+      await auditLogModel.createAuditLog(transactionId, 'Failed Transfer', { sender: userId, recipient: recipientWallet.user_id, amount, status: 'failed - insufficient balance' }, connection);
       await connection.commit();
       return res.status(400).json({ message: 'Insufficient balance' });
     }
@@ -164,7 +164,7 @@ const transfer = async (req, res) => {
     // 3. Tambahkan saldo ke penerima jika pemotongan saldo pengirim berhasil
     await walletModel.updateBalance(recipientWallet.id, amount, connection);
     await transactionModel.updateTransactionStatus(transactionId, 'success', connection);
-    await auditLogModel.createAuditLog(transactionId, 'Transfer', { sender: userId, recipient: recipientWallet.user_id, amount, status: 'success' }, connection);
+    await auditLogModel.createAuditLog(transactionId, 'Transfer Balance', { sender: userId, recipient: recipientWallet.user_id, amount, status: 'success' }, connection);
 
     await connection.commit();
     
@@ -235,7 +235,7 @@ const payment = async (req, res) => {
     if (!success) {
       // Saldo kurang, gagalkan transaksi
       await transactionModel.updateTransactionStatus(transactionId, 'failed', connection);
-      await auditLogModel.createAuditLog(transactionId, 'Payment', { userId, amount, status: 'failed - insufficient balance', payment_name: paymentName }, connection);
+      await auditLogModel.createAuditLog(transactionId, 'Failed Payment', { userId, amount, status: 'failed - insufficient balance', payment_name: paymentName }, connection);
       await connection.commit();
       return res.status(400).json({ message: 'Insufficient balance' });
     }
@@ -401,7 +401,7 @@ const updateTransactionStatus = async (req, res) => {
     // Simpan status baru
     await transactionModel.updateTransactionStatus(id, newStatus, connection);
     // Catat perubahan status ini ke audit log agar terekam siapa Admin yang merubahnya
-    await auditLogModel.createAuditLog(id, 'Update Status', { oldStatus, newStatus, adminId: req.user.id }, connection);
+    await auditLogModel.createAuditLog(id, 'Admin changed Transaction status', { oldStatus, newStatus, adminId: req.user.id }, connection);
 
     await connection.commit();
     res.status(200).json({ message: 'Status updated successfully' });
@@ -458,7 +458,7 @@ const updateTopUpStatus = async (req, res) => {
     }
 
     await transactionModel.updateTransactionStatus(id, newStatus, connection);
-    await auditLogModel.createAuditLog(id, 'Update TopUp Status', { oldStatus, newStatus, adminId: req.user.id }, connection);
+    await auditLogModel.createAuditLog(id, 'Admin changed Top Up status', { oldStatus, newStatus, adminId: req.user.id }, connection);
 
     await connection.commit();
     res.status(200).json({ message: 'Top up status updated successfully' });
@@ -515,7 +515,7 @@ const updatePaymentStatus = async (req, res) => {
     }
 
     await transactionModel.updateTransactionStatus(id, newStatus, connection);
-    await auditLogModel.createAuditLog(id, 'Update Payment Status', { oldStatus, newStatus, adminId: req.user.id }, connection);
+    await auditLogModel.createAuditLog(id, 'Admin changed Payment status', { oldStatus, newStatus, adminId: req.user.id }, connection);
 
     await connection.commit();
     res.status(200).json({ message: 'Payment status updated successfully' });
@@ -578,7 +578,7 @@ const updateTransferStatus = async (req, res) => {
     }
 
     await transactionModel.updateTransactionStatus(id, newStatus, connection);
-    await auditLogModel.createAuditLog(id, 'Update Transfer Status', { oldStatus, newStatus, adminId: req.user.id }, connection);
+    await auditLogModel.createAuditLog(id, 'Admin changed Transfer status', { oldStatus, newStatus, adminId: req.user.id }, connection);
 
     await connection.commit();
     res.status(200).json({ message: 'Transfer status updated successfully' });
