@@ -270,30 +270,54 @@ const getTransactions = async (req, res) => {
   try {
     let rawTransactions = [];
 
+    let formattedTransactions = [];
+
     if (req.user.role === 'auditor') {
       // Auditor memiliki izin tertinggi untuk melihat SEMUA transaksi
-      rawTransactions = await transactionModel.getTransactions(true);
+      const rawTransactions = await transactionModel.getAllTransactionsWithDetails(true);
+      formattedTransactions = rawTransactions.map(tx => ({
+        transaction_id: tx.id,
+        user_name: tx.user_name,
+        wallet_number: tx.wallet_number,
+        transaction_type: tx.type,
+        amount: Number(tx.amount),
+        status: tx.status,
+        description: tx.description,
+        date_and_time: tx.created_at,
+        balance_before: Number(tx.balance_before || 0),
+        balance_after: Number(tx.balance_after || 0)
+      }));
     } else if (req.user.role === 'admin') {
       // Admin hanya melihat semua transaksi yang berstatus aktif (belum terhapus)
-      rawTransactions = await transactionModel.getTransactions(false);
+      const rawTransactions = await transactionModel.getAllTransactionsWithDetails(false);
+      formattedTransactions = rawTransactions.map(tx => ({
+        transaction_id: tx.id,
+        user_name: tx.user_name,
+        wallet_number: tx.wallet_number,
+        transaction_type: tx.type,
+        amount: Number(tx.amount),
+        status: tx.status,
+        description: tx.description,
+        date_and_time: tx.created_at,
+        balance_before: Number(tx.balance_before || 0),
+        balance_after: Number(tx.balance_after || 0)
+      }));
     } else {
       // User biasa hanya boleh melihat riwayat transaksi miliknya sendiri
       const wallet = await walletModel.getWalletByUserId(req.user.id);
       if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
-      rawTransactions = await transactionModel.getTransactionsByWalletId(wallet.id);
+      const rawTransactions = await transactionModel.getTransactionsByWalletId(wallet.id);
+      formattedTransactions = rawTransactions.map(tx => ({
+        transaction_id: tx.id,
+        transaction_type: tx.type,
+        amount: Number(tx.amount),
+        status: tx.status,
+        description: tx.description,
+        date_and_time: tx.created_at,
+        balance_before: Number(tx.balance_before || 0),
+        balance_after: Number(tx.balance_after || 0)
+      }));
     }
-
-    // Format data sesuai kebutuhan (mutasi transaksi)
-    const formattedTransactions = rawTransactions.map(tx => ({
-      date_and_time: tx.created_at,
-      transaction_id: tx.id,
-      transaction_type: tx.type,
-      amount: Number(tx.amount),
-      status: tx.status,
-      description: tx.description,
-      balance_before: Number(tx.balance_before || 0),
-      balance_after: Number(tx.balance_after || 0)
-    }));
 
     return res.status(200).json({ data: formattedTransactions });
   } catch (error) {

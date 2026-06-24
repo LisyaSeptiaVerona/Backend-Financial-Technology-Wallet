@@ -27,6 +27,21 @@ const getTransactions = async () => {
   return rows;
 };
 
+// Fungsi untuk mendapatkan semua transaksi beserta detail user dan wallet untuk admin/auditor
+const getAllTransactionsWithDetails = async () => {
+  const [rows] = await db.query(`
+    SELECT 
+      t.*, 
+      w.wallet_number, 
+      u.name as user_name
+    FROM transactions t
+    JOIN wallets w ON t.wallet_id = w.id
+    JOIN users u ON w.user_id = u.id
+    ORDER BY t.created_at DESC
+  `);
+  return rows;
+};
+
 // Fungsi untuk mencari sebuah transaksi secara spesifik menggunakan ID transaksi tersebut
 const getTransactionById = async (id) => {
   const [rows] = await db.query('SELECT * FROM transactions WHERE id = ?', [id]);
@@ -47,6 +62,7 @@ module.exports = {
   createTransaction,
   updateTransactionStatus,
   getTransactions,
+  getAllTransactionsWithDetails,
   getTransactionById,
   getTransactionsByWalletId
 };
