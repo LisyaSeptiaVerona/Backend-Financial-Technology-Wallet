@@ -1,6 +1,12 @@
 CREATE DATABASE IF NOT EXISTS gopay;
 USE gopay;
 
+-- DROP semua tabel untuk reset ulang ID ke 1
+DROP TABLE IF EXISTS audit_logs;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS users;
+
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
