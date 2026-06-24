@@ -160,7 +160,7 @@ const payment = async (req, res) => {
   const connection = await db.getConnection();
   try {
     const userId = req.user.id;
-    const { amount, pin, description } = req.body;
+    const { amount, pin, description, wallet_number } = req.body;
 
     if (!amount || amount <= 0 || !pin) {
       return res.status(400).json({ message: 'Amount (>0) and pin are required' });
@@ -175,6 +175,14 @@ const payment = async (req, res) => {
     if (!wallet) {
       return res.status(404).json({ message: 'Wallet not found' });
     }
+
+    // Jika user mengirim wallet_number di request body, validasi agar cocok
+    if (wallet_number && wallet.wallet_number !== wallet_number) {
+      return res.status(400).json({ message: 'Wallet number does not match your wallet' });
+    }
+
+    const balanceBefore = Number(wallet.balance);
+    const balanceAfter = balanceBefore - Number(amount);
 
     await connection.beginTransaction();
 
@@ -196,7 +204,18 @@ const payment = async (req, res) => {
     await auditLogModel.createAuditLog(transactionId, 'Payment', { userId, amount, status: 'success' }, connection);
 
     await connection.commit();
-    res.status(200).json({ message: 'Payment successful', transactionId });
+    
+    res.status(200).json({ 
+      message: 'Payment successful',
+      data: {
+        transaction_id: transactionId,
+        wallet_number: wallet.wallet_number,
+        amount: Number(amount),
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        status: 'success'
+      }
+    });
   } catch (error) {
     await connection.rollback();
     console.error('Payment error:', error);
