@@ -248,6 +248,24 @@ const getWalletByUserId = async (req, res) => {
   }
 };
 
+// Controller untuk Admin & Auditor melihat seluruh saldo user (hanya menampilkan data saldo)
+const getAllWalletsBalance = async (req, res) => {
+  try {
+    const wallets = await userModel.getAllWallets();
+    res.status(200).json({
+      message: 'All wallet balances retrieved successfully',
+      data: wallets.map(w => ({
+        wallet_number: w.wallet_number,
+        balance: w.balance,
+        status: w.status
+      }))
+    });
+  } catch (error) {
+    console.error('Get all wallets balance error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getWallets,
   getAdminDashboard,
@@ -260,5 +278,6 @@ module.exports = {
   updateUser,
   setPin,
   getAllWallets,
-  getWalletByUserId
+  getWalletByUserId,
+  getAllWalletsBalance
 };

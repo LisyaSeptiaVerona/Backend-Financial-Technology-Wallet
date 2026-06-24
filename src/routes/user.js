@@ -31,6 +31,9 @@ router.get('/', authenticateToken, authorizeRoles('admin', 'auditor'), userContr
 // Route untuk Admin dan Auditor guna melihat semua wallet semua user
 router.get('/all-wallets', authenticateToken, authorizeRoles('admin', 'auditor'), userController.getAllWallets);
 
+// Route untuk Admin dan Auditor guna melihat seluruh saldo user (fokus ke data saldo saja)
+router.get('/all-wallets-balance', authenticateToken, authorizeRoles('admin', 'auditor'), userController.getAllWalletsBalance);
+
 // Route untuk Admin dan Auditor melihat wallet milik user tertentu berdasarkan ID user
 router.get('/:id/wallet', authenticateToken, authorizeRoles('admin', 'auditor'), userController.getWalletByUserId);
 
