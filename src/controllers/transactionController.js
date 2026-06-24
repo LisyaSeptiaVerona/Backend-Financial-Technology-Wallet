@@ -129,8 +129,10 @@ const transfer = async (req, res) => {
       return res.status(400).json({ message: 'Cannot transfer to yourself' });
     }
 
-    const balanceBefore = Number(senderWallet.balance);
-    const balanceAfter = balanceBefore - Number(amount);
+    // Cek saldo SEBELUM memulai transaksi database
+    if (Number(amount) > Number(senderWallet.balance)) {
+      return res.status(400).json({ message: 'Insufficient balance' });
+    }
 
     await connection.beginTransaction();
 
@@ -210,6 +212,11 @@ const payment = async (req, res) => {
     const balanceBefore = Number(wallet.balance);
     const balanceAfter = balanceBefore - Number(amount);
     
+    // Cek saldo SEBELUM memulai transaksi database
+    if (Number(amount) > balanceBefore) {
+      return res.status(400).json({ message: 'Insufficient balance' });
+    }
+
     // Identifikasi nama pembayaran (misal Netflix, Spotify)
     const paymentName = payment_name || description || 'Payment';
 
