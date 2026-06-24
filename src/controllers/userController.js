@@ -206,53 +206,6 @@ const setPin = async (req, res) => {
   }
 };
 
-// --- TEMPORARY ENDPOINT TO FORCE EXACT IDs ---
-const forceResetDB = async (req, res) => {
-  try {
-    const bcrypt = require('bcrypt');
-    const pool = require('../config/database');
-    const userModel = require('../models/userModel');
-    
-    // 1. Wipe everything and reset auto-increment completely
-    await pool.query('SET FOREIGN_KEY_CHECKS = 0');
-    await pool.query('TRUNCATE TABLE audit_logs');
-    await pool.query('TRUNCATE TABLE transactions');
-    await pool.query('TRUNCATE TABLE wallets');
-    await pool.query('TRUNCATE TABLE users');
-    await pool.query('SET FOREIGN_KEY_CHECKS = 1');
-    
-    // 2. Insert Admin (this will definitely get ID 1)
-    const hashedAdmin = await bcrypt.hash('admin123!', 10);
-    await userModel.createUser('Super Admin', 'admin@gopay.com', hashedAdmin, 'admin');
-    
-    // 3. Insert Auditor (this will definitely get ID 2)
-    const hashedAuditor = await bcrypt.hash('auditor123!', 10);
-    await userModel.createUser('Auditor', 'auditor@gopay.com', hashedAuditor, 'auditor');
-    
-    res.status(200).json({ 
-      message: "Database perfectly wiped and re-seeded. IDs are now EXACTLY 1 and 2!" 
-    });
-  } catch (error) {
-    console.error('Force reset error:', error);
-    res.status(500).json({ message: 'Internal server error', details: error.message });
-  }
-};
-
-// --- TEMPORARY DEBUG ENDPOINT ---
-const debugDB = async (req, res) => {
-  try {
-    const pool = require('../config/database');
-    const [users] = await pool.query('SELECT id, name, email FROM users');
-    res.json({
-      mysql_host: process.env.MYSQLHOST || 'Not Set',
-      mysql_db: process.env.MYSQLDATABASE || 'Not Set',
-      connected_users_in_this_db: users
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
 module.exports = {
   getWallets,
   getAdminDashboard,
@@ -264,7 +217,5 @@ module.exports = {
   deleteUser,
   getAllUsers,
   updateUser,
-  setPin,
-  forceResetDB,
-  debugDB
+  setPin
 };
