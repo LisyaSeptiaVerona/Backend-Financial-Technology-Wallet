@@ -49,6 +49,33 @@ async function runMigration() {
       await pool.query('UPDATE users SET name = ? WHERE email = ?', ['Auditor', auditorEmail]);
     }
 
+    // --- FORCE EXACT IDs to 1 and 2 ---
+    console.log('Forcing exact IDs for Admin (1) and Auditor (2)...');
+    try {
+      await pool.query('SET FOREIGN_KEY_CHECKS = 0');
+      
+      const [adminData] = await pool.query('SELECT id FROM users WHERE email = "admin@gopay.com"');
+      if (adminData.length > 0 && adminData[0].id !== 1) {
+         const oldAdminId = adminData[0].id;
+         await pool.query('UPDATE users SET id = 1 WHERE id = ?', [oldAdminId]);
+         await pool.query('UPDATE wallets SET id = 1, user_id = 1 WHERE user_id = ?', [oldAdminId]);
+      }
+
+      const [auditorData] = await pool.query('SELECT id FROM users WHERE email = "auditor@gopay.com"');
+      if (auditorData.length > 0 && auditorData[0].id !== 2) {
+         const oldAuditorId = auditorData[0].id;
+         await pool.query('UPDATE users SET id = 2 WHERE id = ?', [oldAuditorId]);
+         await pool.query('UPDATE wallets SET id = 2, user_id = 2 WHERE user_id = ?', [oldAuditorId]);
+      }
+
+      await pool.query('ALTER TABLE users AUTO_INCREMENT = 3');
+      await pool.query('ALTER TABLE wallets AUTO_INCREMENT = 3');
+      await pool.query('SET FOREIGN_KEY_CHECKS = 1');
+      console.log('IDs successfully forced to 1 and 2.');
+    } catch (e) {
+      console.log('Error forcing IDs:', e);
+    }
+
     process.exit(0);
   } catch (error) {
     console.error('Migration failed:', error);
