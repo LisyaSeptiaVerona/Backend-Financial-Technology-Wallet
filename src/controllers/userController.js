@@ -1,24 +1,24 @@
 const bcrypt = require('bcrypt');
 const userModel = require('../models/userModel');
 
-// Controller untuk mengambil data profil pengguna beserta saldo dompetnya
-const getProfile = async (req, res) => {
+// Controller untuk mengambil data wallet pengguna
+const getWallets = async (req, res) => {
   try {
     // req.user.id didapatkan dari token JWT (via auth middleware)
     const userId = req.user.id; 
 
-    const profile = await userModel.getUserProfile(userId);
+    const wallet = await userModel.getUserWallet(userId);
     
-    if (!profile) {
-      return res.status(404).json({ message: 'User not found' });
+    if (!wallet) {
+      return res.status(404).json({ message: 'Wallet not found' });
     }
 
     res.status(200).json({
-      message: 'Profile retrieved successfully',
-      data: profile
+      message: 'Wallet retrieved successfully',
+      data: wallet
     });
   } catch (error) {
-    console.error('Get profile error:', error);
+    console.error('Get wallet error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -207,7 +207,7 @@ const setPin = async (req, res) => {
 };
 
 module.exports = {
-  getProfile,
+  getWallets,
   getAdminDashboard,
   getUserDashboard,
   getAuditorDashboard,

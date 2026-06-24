@@ -17,10 +17,13 @@ const createUser = async (name, email, hashedPassword, role = 'user') => {
     // Dapatkan ID user yang baru saja dibuat
     const userId = userResult.insertId;
 
+    // Generate nomor wallet unik, contoh: W-timestamp-random
+    const walletNumber = 'W' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+
     // Secara otomatis membuatkan wallet untuk user tersebut dengan saldo awal 0
     await connection.query(
-      'INSERT INTO wallets (user_id, balance) VALUES (?, 0)',
-      [userId]
+      'INSERT INTO wallets (user_id, wallet_number, balance, status) VALUES (?, ?, 0, "active")',
+      [userId, walletNumber]
     );
 
     // Jika semua perintah berhasil, commit (simpan permanen) ke database
@@ -42,13 +45,21 @@ const getUserByEmail = async (email) => {
   return rows[0];
 };
 
-// Fungsi untuk mengambil profil user lengkap beserta saldo wallet-nya
-const getUserProfile = async (userId) => {
+// Fungsi untuk mengambil wallet user
+const getUserWallet = async (userId) => {
   const [rows] = await db.query(`
-    SELECT u.id, u.name, u.email, u.role, u.created_at, w.balance 
-    FROM users u 
-    LEFT JOIN wallets w ON u.id = w.user_id 
-    WHERE u.id = ?
+    SELECT 
+      w.id,
+      w.user_id,
+      w.wallet_number,
+      w.balance,
+      u.pin,
+      w.status,
+      w.created_at,
+      w.updated_at
+    FROM wallets w 
+    JOIN users u ON w.user_id = u.id
+    WHERE w.user_id = ?
   `, [userId]);
   return rows[0];
 };
@@ -86,7 +97,7 @@ const updateUser = async (id, name, email, role) => {
 module.exports = {
   createUser,
   getUserByEmail,
-  getUserProfile,
+  getUserWallet,
   getUserById,
   updatePassword,
   deleteUserById,
