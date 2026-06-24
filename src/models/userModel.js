@@ -55,6 +55,8 @@ const getUserWallet = async (userId) => {
     SELECT 
       w.id,
       w.user_id,
+      u.name AS user_name,
+      u.email,
       w.wallet_number,
       w.balance,
       u.pin,
