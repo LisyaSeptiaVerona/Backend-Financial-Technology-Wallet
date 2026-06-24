@@ -211,7 +211,6 @@ module.exports = {
   getAdminDashboard,
   getUserDashboard,
   getAuditorDashboard,
-  getUserProfile,
   createUserByAdmin,
   changePassword,
   deleteUser,
