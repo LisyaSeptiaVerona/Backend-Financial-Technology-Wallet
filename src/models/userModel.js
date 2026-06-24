@@ -17,14 +17,18 @@ const createUser = async (name, email, hashedPassword, role = 'user') => {
     // Dapatkan ID user yang baru saja dibuat
     const userId = userResult.insertId;
 
-    // Generate nomor wallet unik, contoh: W-timestamp-random
-    const walletNumber = 'W' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
+    // Wallet hanya dibuat otomatis untuk nasabah biasa (role: 'user')
+    // Admin dan Auditor tidak memerlukan wallet karena mereka adalah akun staf/sistem
+    if (role === 'user') {
+      // Generate nomor wallet unik, contoh: W-timestamp-random
+      const walletNumber = 'W' + Date.now().toString().slice(-6) + Math.floor(1000 + Math.random() * 9000);
 
-    // Secara otomatis membuatkan wallet untuk user tersebut dengan saldo awal 0
-    await connection.query(
-      'INSERT INTO wallets (user_id, wallet_number, balance, status) VALUES (?, ?, 0, "active")',
-      [userId, walletNumber]
-    );
+      // Secara otomatis membuatkan wallet untuk user tersebut dengan saldo awal 0
+      await connection.query(
+        'INSERT INTO wallets (user_id, wallet_number, balance, status) VALUES (?, ?, 0, "active")',
+        [userId, walletNumber]
+      );
+    }
 
     // Jika semua perintah berhasil, commit (simpan permanen) ke database
     await connection.commit();
