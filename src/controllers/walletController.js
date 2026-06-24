@@ -28,7 +28,14 @@ const getWalletById = async (req, res) => {
       return res.status(403).json({ message: 'Forbidden: You can only view your own wallet' });
     }
 
-    res.status(200).json({ data: wallet });
+    res.status(200).json({
+      message: 'Saldo Wallet',
+      data: {
+        wallet_number: wallet.wallet_number,
+        balance: wallet.balance,
+        status: wallet.status
+      }
+    });
   } catch (error) {
     console.error('Get wallet by ID error:', error);
     res.status(500).json({ message: 'Internal server error' });
