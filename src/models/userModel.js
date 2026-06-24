@@ -94,6 +94,26 @@ const updateUser = async (id, name, email, role) => {
   );
 };
 
+// Fungsi untuk mendapatkan wallet milik user tertentu berdasarkan user ID
+const getWalletByUserId = async (userId) => {
+  const [rows] = await db.query(`
+    SELECT 
+      w.id,
+      w.user_id,
+      u.name AS user_name,
+      u.email AS user_email,
+      w.wallet_number,
+      w.balance,
+      w.status,
+      w.created_at,
+      w.updated_at
+    FROM wallets w
+    JOIN users u ON w.user_id = u.id
+    WHERE w.user_id = ?
+  `, [userId]);
+  return rows[0];
+};
+
 // Fungsi untuk mendapatkan semua wallet dari semua user (untuk Admin & Auditor)
 const getAllWallets = async () => {
   const [rows] = await db.query(`
@@ -123,5 +143,6 @@ module.exports = {
   deleteUserById,
   getAllUsers,
   updateUser,
-  getAllWallets
+  getAllWallets,
+  getWalletByUserId
 };

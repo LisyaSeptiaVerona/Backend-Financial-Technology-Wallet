@@ -221,6 +221,33 @@ const getAllWallets = async (req, res) => {
   }
 };
 
+// Controller untuk Admin & Auditor melihat wallet milik user tertentu berdasarkan ID
+const getWalletByUserId = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Cek apakah user dengan ID tersebut ada di database
+    const user = await userModel.getUserById(id);
+    if (!user) {
+      return res.status(404).json({ message: `User dengan ID ${id} tidak ditemukan` });
+    }
+
+    // Ambil data wallet milik user tersebut
+    const wallet = await userModel.getWalletByUserId(id);
+    if (!wallet) {
+      return res.status(404).json({ message: `Wallet untuk user ID ${id} tidak ditemukan` });
+    }
+
+    res.status(200).json({
+      message: `Wallet milik user ID ${id} berhasil ditemukan`,
+      data: wallet
+    });
+  } catch (error) {
+    console.error('Get wallet by user ID error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getWallets,
   getAdminDashboard,
@@ -232,5 +259,6 @@ module.exports = {
   getAllUsers,
   updateUser,
   setPin,
-  getAllWallets
+  getAllWallets,
+  getWalletByUserId
 };
