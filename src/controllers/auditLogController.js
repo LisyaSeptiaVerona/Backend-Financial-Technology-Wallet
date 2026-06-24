@@ -5,24 +5,19 @@ const getAuditLogs = async (req, res) => {
   try {
     // Meminta model auditLogModel untuk mengambil semua rekaman dari database
     const logs = await auditLogModel.getAllAuditLogs();
+    
     // Format logs: parse details JSON string and use nice English keys
-    const formattedLogs = logs.map(log => {
-      let parsedDetails = {};
-      try {
-        parsedDetails = JSON.parse(log.details);
-      } catch (e) {
-        // If not valid JSON, just keep the string
-        parsedDetails = log.details;
-      }
-      
-      return {
-        log_id: log.id,
-        transaction_id: log.transaction_id,
-        action: log.action,
-        details: parsedDetails,
-        date_and_time: log.created_at
-      };
-    });
+    const formattedLogs = logs.map(log => ({
+      log_id: log.log_id,
+      transaction_id: log.transaction_id,
+      user_name: log.user_name,
+      role: log.role,
+      action: log.action,
+      status: log.status,
+      amount: Number(log.amount),
+      description: log.description,
+      date_and_time: log.date_and_time
+    }));
     
     // Mengembalikan response sukses (HTTP 200) beserta datanya ke client
     res.status(200).json({ data: formattedLogs });
