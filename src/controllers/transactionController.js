@@ -96,21 +96,16 @@ const transfer = async (req, res) => {
   const connection = await db.getConnection();
   try {
     const userId = req.user.id;
-    const { recipientUserId, amount, pin, description } = req.body;
+    const { recipientUserId, recipientWalletNumber, amount, pin, description } = req.body;
 
-    // Validasi input: pastikan semua field yang dibutuhkan terisi dengan benar
-    if (!recipientUserId || !amount || amount <= 0 || !pin) {
-      return res.status(400).json({ message: 'Recipient, amount (>0), and pin are required' });
+    // Validasi input: pastikan ada penerima (ID atau Nomor Wallet), amount (>0), dan PIN
+    if ((!recipientUserId && !recipientWalletNumber) || !amount || amount <= 0 || !pin) {
+      return res.status(400).json({ message: 'Recipient (ID or Wallet Number), amount (>0), and pin are required' });
     }
 
     // Verifikasi PIN sebelum memproses transfer
     if (!(await verifyPin(userId, pin))) {
       return res.status(401).json({ message: 'Invalid PIN' });
-    }
-
-    // Cegah user melakukan transfer ke dirinya sendiri
-    if (userId === recipientUserId) {
-      return res.status(400).json({ message: 'Cannot transfer to yourself' });
     }
 
     // Ambil data wallet pengirim (sender)
@@ -119,23 +114,44 @@ const transfer = async (req, res) => {
       return res.status(404).json({ message: 'Sender wallet not found' });
     }
 
-    // Ambil data wallet penerima (recipient)
-    const recipientWallet = await walletModel.getWalletByUserId(recipientUserId);
+    // Ambil data wallet penerima (recipient) berdasarkan wallet number atau user ID
+    let recipientWallet;
+    if (recipientWalletNumber) {
+      recipientWallet = await walletModel.getWalletByWalletNumber(recipientWalletNumber);
+    } else {
+      recipientWallet = await walletModel.getWalletByUserId(recipientUserId);
+    }
+
     if (!recipientWallet) {
       return res.status(404).json({ message: 'Recipient wallet not found' });
     }
 
+    // Cegah user melakukan transfer ke dirinya sendiri
+    if (senderWallet.id === recipientWallet.id) {
+      return res.status(400).json({ message: 'Cannot transfer to yourself' });
+    }
+
+    const balanceBefore = Number(senderWallet.balance);
+    const balanceAfter = balanceBefore - Number(amount);
+
     await connection.beginTransaction();
 
     // 1. Catat transaksi dengan tipe 'transfer' yang melibatkan dompet pengirim dan penerima
-    const transactionId = await transactionModel.createTransaction(senderWallet.id, 'transfer', amount, description || 'Transfer', recipientWallet.id, connection);
+    const transactionId = await transactionModel.createTransaction(
+      senderWallet.id, 
+      'transfer', 
+      amount, 
+      description || 'Transfer', 
+      recipientWallet.id, 
+      connection
+    );
 
     // 2. Coba kurangi saldo pengirim (updateBalance mengembalikan false jika saldo jadi minus)
     const success = await walletModel.updateBalance(senderWallet.id, -amount, connection);
     if (!success) {
       // Jika saldo tidak cukup, ubah status transaksi menjadi 'failed' dan log kegagalan
       await transactionModel.updateTransactionStatus(transactionId, 'failed', connection);
-      await auditLogModel.createAuditLog(transactionId, 'Transfer', { sender: userId, recipient: recipientUserId, amount, status: 'failed - insufficient balance' }, connection);
+      await auditLogModel.createAuditLog(transactionId, 'Transfer', { sender: userId, recipient: recipientWallet.user_id, amount, status: 'failed - insufficient balance' }, connection);
       await connection.commit();
       return res.status(400).json({ message: 'Insufficient balance' });
     }
@@ -143,10 +159,22 @@ const transfer = async (req, res) => {
     // 3. Tambahkan saldo ke penerima jika pemotongan saldo pengirim berhasil
     await walletModel.updateBalance(recipientWallet.id, amount, connection);
     await transactionModel.updateTransactionStatus(transactionId, 'success', connection);
-    await auditLogModel.createAuditLog(transactionId, 'Transfer', { sender: userId, recipient: recipientUserId, amount, status: 'success' }, connection);
+    await auditLogModel.createAuditLog(transactionId, 'Transfer', { sender: userId, recipient: recipientWallet.user_id, amount, status: 'success' }, connection);
 
     await connection.commit();
-    res.status(200).json({ message: 'Transfer successful', transactionId });
+    
+    res.status(200).json({ 
+      message: 'Transfer successful',
+      data: {
+        transaction_id: transactionId,
+        sender_wallet_number: senderWallet.wallet_number,
+        recipient_wallet_number: recipientWallet.wallet_number,
+        amount: Number(amount),
+        balance_before: balanceBefore,
+        balance_after: balanceAfter,
+        status: 'success'
+      }
+    });
   } catch (error) {
     await connection.rollback();
     console.error('Transfer error:', error);

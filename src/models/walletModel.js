@@ -54,9 +54,16 @@ const updateBalance = async (walletId, amount, connection) => {
   return result.affectedRows > 0;
 };
 
+// Fungsi untuk mencari data wallet berdasarkan nomor walletnya
+const getWalletByWalletNumber = async (walletNumber) => {
+  const [rows] = await db.query('SELECT * FROM wallets WHERE wallet_number = ?', [walletNumber]);
+  return rows[0];
+};
+
 module.exports = {
   getAllWallets,
   getWalletById,
   getWalletByUserId,
+  getWalletByWalletNumber,
   updateBalance
 };
