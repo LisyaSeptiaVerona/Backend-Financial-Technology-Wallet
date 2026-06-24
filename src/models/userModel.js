@@ -94,6 +94,26 @@ const updateUser = async (id, name, email, role) => {
   );
 };
 
+// Fungsi untuk mendapatkan semua wallet dari semua user (untuk Admin & Auditor)
+const getAllWallets = async () => {
+  const [rows] = await db.query(`
+    SELECT 
+      w.id,
+      w.user_id,
+      u.name AS user_name,
+      u.email AS user_email,
+      w.wallet_number,
+      w.balance,
+      w.status,
+      w.created_at,
+      w.updated_at
+    FROM wallets w
+    JOIN users u ON w.user_id = u.id
+    ORDER BY w.id ASC
+  `);
+  return rows;
+};
+
 module.exports = {
   createUser,
   getUserByEmail,
@@ -102,5 +122,6 @@ module.exports = {
   updatePassword,
   deleteUserById,
   getAllUsers,
-  updateUser
+  updateUser,
+  getAllWallets
 };

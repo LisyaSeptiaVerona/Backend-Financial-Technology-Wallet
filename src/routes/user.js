@@ -28,6 +28,9 @@ router.delete('/:id', authenticateToken, authorizeRoles('admin'), userController
 // Route untuk Admin dan Auditor guna mendapatkan daftar seluruh user di sistem
 router.get('/', authenticateToken, authorizeRoles('admin', 'auditor'), userController.getAllUsers);
 
+// Route untuk Admin dan Auditor guna melihat semua wallet semua user
+router.get('/all-wallets', authenticateToken, authorizeRoles('admin', 'auditor'), userController.getAllWallets);
+
 // Route khusus Admin untuk memperbarui data user (seperti nama, email, role)
 router.put('/:id', authenticateToken, authorizeRoles('admin'), userController.updateUser);
 

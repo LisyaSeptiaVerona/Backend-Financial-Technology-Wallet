@@ -206,6 +206,21 @@ const setPin = async (req, res) => {
   }
 };
 
+// Controller untuk Admin & Auditor melihat semua wallet semua user
+const getAllWallets = async (req, res) => {
+  try {
+    const wallets = await userModel.getAllWallets();
+    res.status(200).json({
+      message: 'All wallets retrieved successfully',
+      total: wallets.length,
+      data: wallets
+    });
+  } catch (error) {
+    console.error('Get all wallets error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   getWallets,
   getAdminDashboard,
@@ -216,5 +231,6 @@ module.exports = {
   deleteUser,
   getAllUsers,
   updateUser,
-  setPin
+  setPin,
+  getAllWallets
 };
