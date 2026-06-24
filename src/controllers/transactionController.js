@@ -260,9 +260,10 @@ const updateTransactionStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const newStatus = status ? status.toLowerCase() : '';
 
     // Pastikan status yang dikirim adalah valid
-    if (!['pending', 'success', 'failed', 'reversed'].includes(status)) {
+    if (!['pending', 'success', 'failed', 'reversed'].includes(newStatus)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
@@ -274,7 +275,6 @@ const updateTransactionStatus = async (req, res) => {
     }
 
     const oldStatus = transaction.status;
-    const newStatus = status;
 
     // Logika penyesuaian saldo berdasarkan perubahan status
     if (oldStatus !== newStatus) {
@@ -348,8 +348,9 @@ const updateTopUpStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const newStatus = status ? status.toLowerCase() : '';
 
-    if (!['pending', 'success', 'failed', 'reversed'].includes(status)) {
+    if (!['pending', 'success', 'failed', 'reversed'].includes(newStatus)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
@@ -366,7 +367,6 @@ const updateTopUpStatus = async (req, res) => {
     }
 
     const oldStatus = transaction.status;
-    const newStatus = status;
 
     if (oldStatus !== newStatus) {
       const wasSuccess = oldStatus === 'success';
@@ -405,8 +405,9 @@ const updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const newStatus = status ? status.toLowerCase() : '';
 
-    if (!['pending', 'success', 'failed', 'reversed'].includes(status)) {
+    if (!['pending', 'success', 'failed', 'reversed'].includes(newStatus)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
@@ -423,7 +424,6 @@ const updatePaymentStatus = async (req, res) => {
     }
 
     const oldStatus = transaction.status;
-    const newStatus = status;
 
     if (oldStatus !== newStatus) {
       const wasSuccess = oldStatus === 'success';
@@ -462,8 +462,9 @@ const updateTransferStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const newStatus = status ? status.toLowerCase() : '';
 
-    if (!['pending', 'success', 'failed', 'reversed'].includes(status)) {
+    if (!['pending', 'success', 'failed', 'reversed'].includes(newStatus)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
@@ -480,7 +481,6 @@ const updateTransferStatus = async (req, res) => {
     }
 
     const oldStatus = transaction.status;
-    const newStatus = status;
 
     if (oldStatus !== newStatus) {
       const wasSuccess = oldStatus === 'success';
