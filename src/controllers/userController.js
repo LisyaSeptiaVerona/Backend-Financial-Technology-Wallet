@@ -114,7 +114,7 @@ const getAdminDashboard = async (req, res) => {
   try {
     const stats = await getSystemStats();
     res.status(200).json({
-      message: 'Welcome Admin! This is the overall system statistics summary.',
+      message: 'Dashboard data retrieved successfully',
       data: stats
     });
   } catch (error) {
@@ -181,7 +181,7 @@ const getAuditorDashboard = async (req, res) => {
   try {
     const stats = await getSystemStats();
     res.status(200).json({
-      message: 'Welcome Auditor! This is the overall system statistics summary (Read-only access).',
+      message: 'Dashboard data retrieved successfully',
       data: stats
     });
   } catch (error) {
